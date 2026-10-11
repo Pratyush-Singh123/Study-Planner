@@ -30,14 +30,18 @@ Students know they need to study, but they don't know:
 
 ## 🚀 Key Features
 
-- **Universal LLM Abstraction Layer:** Seamlessly connect Anthropic Claude, OpenAI GPT, Google Gemini, Local Ollama, or use zero-config Demo Mode.
-- **AI Syllabus Extractor:** Ingests raw syllabus text or PDFs and extracts structured topic trees, difficulty levels, prerequisites, and estimated hours.
+- **Universal Multi-Provider LLM Engine:** Seamlessly connect Anthropic Claude, OpenAI GPT, Google Gemini, Local Ollama, or use zero-config Demo Mode for instant hackathon evaluation.
+- **AI Syllabus Extractor & Topic Architecture:** Ingests raw syllabus text or PDFs and extracts structured topic trees, difficulty levels, prerequisites, and estimated hours.
 - **PYQ Engine & Topic Frequency Mapping:** Maps university past exam questions to topics, ranking exam weightage.
-- **Adaptive Quiz & Conceptual Mistake Log:** Evaluates answers not just for correctness, but specifically isolates the conceptual misunderstanding.
-- **Priority Queue Dashboard:** Dynamically ranks topics using:
+- **Community Campus Archive:** Crowdsourced past university exam paper bank with filters for IIITDM, IIT Madras, NIT Trichy, and Anna University, with 1-click import into personal study plans.
+- **Adaptive Quiz & Conceptual Mistake Log:** Evaluates answers not just for correctness, but specifically isolates the underlying conceptual misunderstanding and saves it to persistent memory.
+- **4-Quadrant Knowledge Risk Matrix:** Categorizes syllabus topics across Risk, Secured Mastery, Low-Yield Gaps, and Deprioritized zones.
+- **Dynamic Priority Study Queue:** Dynamically ranks topics using:
   $$\text{Priority Score} = \text{Gap Score} \times \text{PYQ Frequency} \times \frac{1}{\text{Days Until Exam}}$$
+- **Active Recall Flashcards Drill:** 3D interactive flippable cards featuring automated "Mistake Trap" generation directly from past quiz errors, with spaced repetition rating.
+- **Curated Resource Vault & Visualizers:** Hand-curated interactive simulators (Visualgo, NeetCode), video lectures, and cheatsheets explaining *why* they work for common exam pitfalls.
+- **Day-by-Day Countdown Sprint Planner:** Allocates study sessions per remaining day with **1-Click Export to Google/Apple Calendar (.ics)** and Markdown Roadmap export.
 - **Context-Aware AI Study Coach:** Chatbot injected with the student's real-time academic profile, mistake log, and exam timeline.
-- **"I'm Stuck" Micro-Recommender:** Provides hyper-targeted resources based on specific conceptual sticking points.
 
 ---
 
