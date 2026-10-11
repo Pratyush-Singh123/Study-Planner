@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './', // Enables seamless deployment on GitHub Pages, Vercel, Netlify, or any subpath
   plugins: [
     react(),
     tailwindcss(),
