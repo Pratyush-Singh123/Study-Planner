@@ -1,0 +1,13 @@
+{
+  "name": "gapfill-study-planner",
+  "version": "1.0.0",
+  "description": "GapFill - Intelligent Knowledge Gap Engine and Study Planner for Axion Hackathon",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "backend": "python3 backend/app.py"
+  },
+  "keywords": ["study-planner", "ai", "llm", "knowledge-gaps", "axion-hackathon"],
+  "author": "Pratyush Singh",
+  "license": "MIT"
+}
