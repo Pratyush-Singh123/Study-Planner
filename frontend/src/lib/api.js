@@ -1,9 +1,10 @@
 /**
  * GapFill API Client
  * Calls the Flask API backend routes, with client-side fallback if backend is offline.
+ * Automatically injects JWT Bearer tokens for authenticated personalized cloud database access.
  */
 import { callLLM, getLLMConfig } from './llm';
-import { SYLLABUS_PARSER_PROMPT, PYQ_MAPPER_PROMPT, QUESTION_GENERATOR_PROMPT, QUIZ_EVALUATOR_PROMPT, RESOURCE_RECOMMENDER_PROMPT } from './prompts';
+import { getAuthHeaders } from './auth';
 
 const API_BASE = '/api';
 
@@ -12,7 +13,7 @@ export async function parseSyllabusAPI(subjectName, syllabusText) {
   try {
     const res = await fetch(`${API_BASE}/syllabus/parse`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         subjectName,
         syllabusText,
@@ -53,7 +54,7 @@ export async function mapPYQsAPI(questions, topics) {
   try {
     const res = await fetch(`${API_BASE}/pyq/map`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         questions,
         topics,
@@ -92,7 +93,7 @@ export async function generateQuestionsAPI(topic, subject, difficulty, count = 3
   try {
     const res = await fetch(`${API_BASE}/pyq/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         topic,
         subject,
@@ -123,17 +124,18 @@ Return ONLY valid JSON:
   return parsed.questions || [];
 }
 
-export async function evaluateQuizAnswerAPI(topic, question, studentAnswer, keyPoints = []) {
+export async function evaluateQuizAnswerAPI(topic, question, studentAnswer, keyPoints = [], subject = 'General') {
   const config = getLLMConfig();
   try {
     const res = await fetch(`${API_BASE}/quiz/evaluate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         topic,
         question,
         studentAnswer,
         keyPoints,
+        subject,
         provider: config.provider,
         apiKey: config.apiKey,
         model: config.model
@@ -174,7 +176,7 @@ export async function chatCoachAPI(message, history, context) {
   try {
     const res = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         message,
         history,
@@ -203,7 +205,7 @@ export async function recommendResourceAPI(topic, subject, confusion, learningSt
   try {
     const res = await fetch(`${API_BASE}/resource/recommend`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         topic,
         subject,
@@ -236,8 +238,12 @@ export async function uploadPYQPDFAPI(file) {
   const formData = new FormData();
   formData.append('file', file);
 
+  const authHeaders = getAuthHeaders();
+  delete authHeaders['Content-Type']; // Let browser set boundary
+
   const res = await fetch(`${API_BASE}/pyq/upload`, {
     method: 'POST',
+    headers: authHeaders,
     body: formData
   });
 

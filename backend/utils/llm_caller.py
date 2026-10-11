@@ -164,4 +164,23 @@ def simulate_backend_demo(system_prompt, user_message):
             "searchQuery": "NeetCode reverse linked list visual animation"
         })
     else:
-        return "Based on your syllabus, prioritize **AVL Trees & Balance Rotations** (Gap Score: 85%, Exam in 3 days). You previously struggled with LR/RL double rotations."
+        # Dynamically extract student personalization details from the system prompt
+        name_match = re.search(r"Name:\s*([^\n]+)", system_prompt)
+        student_name = name_match.group(1).strip() if name_match else "Student"
+
+        gap_match = re.search(r"KNOWLEDGE GAPS[^\n]*\n- ([^:]+):\s*gap score\s*(\d+)%", system_prompt)
+        top_topic = gap_match.group(1).strip() if gap_match else "AVL Trees & Balance Rotations"
+        top_score = gap_match.group(2).strip() if gap_match else "85"
+
+        subject_match = re.search(r"SUBJECTS & EXAMS[^\n]*\n- ([^:]+):\s*exam on\s*([^,\n]+)", system_prompt)
+        subject_name = subject_match.group(1).strip() if subject_match else "Core Subject"
+        exam_date = subject_match.group(2).strip() if subject_match else "soon"
+
+        mistake_match = re.search(r"RECENT MISTAKES[^\n]*\n- \[([^\]]+)\]:\s*([^\n]+)", system_prompt)
+        mistake_advice = ""
+        if mistake_match:
+            mistake_advice = f" You recently recorded a conceptual flaw in **{mistake_match.group(1)}**: *\"{mistake_match.group(2)}\"*. Let's review that first."
+
+        greeting = f"Hi {student_name}! " if student_name and student_name != "Student" else ""
+        return f"{greeting}Based on your study data for **{subject_name}**, you should urgently focus on **{top_topic}** (Gap Score: {top_score}%, Exam on {exam_date}).{mistake_advice} Would you like a 3-question diagnostic quiz on this right now?"
+

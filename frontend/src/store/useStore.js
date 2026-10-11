@@ -1,5 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DEMO_DATASET } from './demoData';
+import { 
+  getStoredUser, 
+  getStoredToken, 
+  clearAuth, 
+  fetchUserStudyDataAPI, 
+  syncUserStudyDataAPI, 
+  fetchCurrentUserAPI 
+} from '../lib/auth';
 
 const STORAGE_KEY = 'gapfill_state_v1';
 
@@ -19,7 +27,6 @@ export function getInitialState() {
   } catch (e) {
     console.error('Failed to load local storage state', e);
   }
-  // Default to Demo Dataset so the app is immediately alive and functional
   return DEMO_DATASET;
 }
 
@@ -32,14 +39,92 @@ export function saveStateToStorage(state) {
 }
 
 /**
- * Custom Hook for global reactive state
+ * Custom Hook for global reactive state with database cloud synchronization
  */
 export function useStore() {
   const [state, setState] = useState(getInitialState);
+  const [user, setUser] = useState(getStoredUser);
+  const [token, setToken] = useState(getStoredToken);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const isInitialMount = useRef(true);
 
+  // Sync user state on mount if token is present
+  useEffect(() => {
+    if (token) {
+      fetchCurrentUserAPI().then(u => {
+        if (u) setUser(u);
+        else setUser(null);
+      });
+
+      setIsSyncing(true);
+      fetchUserStudyDataAPI().then(cloudData => {
+        setIsSyncing(false);
+        if (cloudData && cloudData.subjects && cloudData.subjects.length > 0) {
+          setState(prev => ({ ...prev, ...cloudData }));
+          setLastSyncedAt(new Date());
+        }
+      }).catch(() => setIsSyncing(false));
+    }
+  }, [token]);
+
+  // Debounced auto-sync to cloud database whenever state updates
   useEffect(() => {
     saveStateToStorage(state);
-  }, [state]);
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (user && token) {
+      const timer = setTimeout(async () => {
+        setIsSyncing(true);
+        const success = await syncUserStudyDataAPI(state);
+        setIsSyncing(false);
+        if (success) {
+          setLastSyncedAt(new Date());
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [state, user, token]);
+
+  const onAuthSuccess = async (loggedUser, authToken) => {
+    setUser(loggedUser);
+    setToken(authToken);
+    setIsSyncing(true);
+
+    try {
+      const cloudData = await fetchUserStudyDataAPI();
+      if (cloudData && cloudData.subjects && cloudData.subjects.length > 0) {
+        setState(prev => ({ ...prev, ...cloudData }));
+      } else {
+        // First-time sync: initialize user cloud database with current data
+        await syncUserStudyDataAPI(state);
+      }
+      setLastSyncedAt(new Date());
+    } catch (e) {
+      console.warn('Initial cloud sync error', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const onLogout = () => {
+    clearAuth();
+    setUser(null);
+    setToken(null);
+    setLastSyncedAt(null);
+  };
+
+  const triggerManualSync = async () => {
+    if (!token) return;
+    setIsSyncing(true);
+    const success = await syncUserStudyDataAPI(state);
+    setIsSyncing(false);
+    if (success) setLastSyncedAt(new Date());
+  };
 
   const loadDemoData = () => {
     setState(DEMO_DATASET);
@@ -156,16 +241,11 @@ export function useStore() {
     }));
   };
 
-  /**
-   * Update knowledge gap score based on quiz performance
-   * avgScore is 0 to 10
-   */
   const recordQuizResult = (topicName, quizResults) => {
     if (!quizResults || quizResults.length === 0) return;
     const avgScore = quizResults.reduce((acc, r) => acc + (r.score ?? (r.correct ? 10 : 2)), 0) / quizResults.length;
     const attempts = quizResults.length;
 
-    // Gap score: 0 = completely mastered, 100 = completely unknown
     const sessionGapScore = Math.max(0, Math.min(100, Math.round(100 - avgScore * 10)));
 
     setState(prev => {
@@ -215,10 +295,6 @@ export function useStore() {
     }));
   };
 
-  /**
-   * Priority score formula:
-   * Priority Score = Gap Score * PYQ Frequency * (1 / Days Until Exam)
-   */
   const calculatePriorityQueue = (subjectId) => {
     const subject = state.subjects.find(s => s.id === subjectId) || state.subjects[0];
     if (!subject) return [];
@@ -226,29 +302,22 @@ export function useStore() {
     const topicsList = state.topics[subject.id] || [];
     const pyqsList = state.pyqs[subject.id] || [];
 
-    // Calculate days until exam
     const today = new Date();
     const examDate = subject.examDate ? new Date(subject.examDate) : new Date(today.getTime() + 7 * 86400000);
     const diffTime = examDate.getTime() - today.getTime();
     const daysUntilExam = Math.max(0.5, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-    // Total PYQs for subject
     const totalPYQs = pyqsList.length || 1;
 
     return topicsList.map(t => {
-      // Topic PYQ count
       const topicPYQs = pyqsList.filter(p => p.topic?.toLowerCase().trim() === t.name?.toLowerCase().trim());
-      const pyqFrequency = pyqsList.length > 0 ? (topicPYQs.length / totalPYQs) : 0.5; // normalized 0..1
+      const pyqFrequency = pyqsList.length > 0 ? (topicPYQs.length / totalPYQs) : 0.5;
       const pyqPercent = Math.round(pyqFrequency * 100);
 
-      // Gap score: 0 to 100 (defaults to 75 if unattempted)
       const gapData = state.gapScores[t.name];
       const gapScore = gapData ? gapData.score : (t.status === 'mastered' ? 15 : 75);
 
-      // Urgency factor
       const urgencyFactor = 1 / daysUntilExam;
-
-      // Priority formula
       const rawPriority = gapScore * (pyqFrequency + 0.2) * (urgencyFactor * 10);
       const normalizedPriority = Math.min(100, Math.round(rawPriority));
 
@@ -331,6 +400,13 @@ export function useStore() {
 
   return {
     state,
+    user,
+    token,
+    isSyncing,
+    lastSyncedAt,
+    onAuthSuccess,
+    onLogout,
+    triggerManualSync,
     loadDemoData,
     resetAllData,
     setLLMConfig,

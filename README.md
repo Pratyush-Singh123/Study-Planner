@@ -30,7 +30,10 @@ Students know they need to study, but they don't know:
 
 ## 🚀 Key Features
 
-- **Universal Multi-Provider LLM Engine:** Seamlessly connect Anthropic Claude, OpenAI GPT, Google Gemini, Local Ollama, or use zero-config Demo Mode for instant hackathon evaluation.
+- **Relational Cloud Database & Isolated User Persistence:** Powered by SQLAlchemy, supporting SQLite by default (`gapfill.db`) or PostgreSQL (`DATABASE_URL`). Each student has their own secure, partitioned study state (subjects, topics, gap scores, recurring mistake logs, notes, mock exam results).
+- **Email Registration & 6-Digit OTP Verification:** Secure signup flow with password hashing (`scrypt`), 10-minute expiring email OTP codes, and JWT Bearer session tokens (`pyjwt`). Supports real SMTP delivery (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) or instant development mode fallback.
+- **Deeply Personalized AI LLM Engine:** When students interact with the AI Coach (`/api/chat`) or take diagnostic quizzes (`/api/quiz/evaluate`), the backend automatically loads the authenticated student's unique knowledge gaps and mistake history from the database, delivering razor-sharp, student-specific feedback.
+- **Universal Multi-Provider LLM Engine:** Seamlessly connect Anthropic Claude, OpenAI GPT, Google Gemini, Local Ollama, or use zero-config Demo Mode for instant evaluation.
 - **AI Syllabus Extractor & Topic Architecture:** Ingests raw syllabus text or PDFs and extracts structured topic trees, difficulty levels, prerequisites, and estimated hours.
 - **PYQ Engine & Topic Frequency Mapping:** Maps university past exam questions to topics, ranking exam weightage.
 - **Community Campus Archive:** Crowdsourced past university exam paper bank with filters for IIITDM, IIT Madras, NIT Trichy, and Anna University, with 1-click import into personal study plans.
@@ -49,20 +52,22 @@ Students know they need to study, but they don't know:
 
 ```
 gapfill/
-├── frontend/             # React (Vite) + Tailwind CSS + Lucide Icons
+├── frontend/             # React 19 (Vite) + Tailwind CSS + Lucide Icons
 │   ├── src/
-│   │   ├── components/   # UI components, layout, cards, progress rings
-│   │   ├── pages/        # Onboarding, Dashboard, Quiz, Chatbot, Resources
-│   │   ├── lib/
-│   │   │   └── llm.js    # Unified multi-provider LLM abstraction
-│   │   └── store/        # Local storage state & demo dataset
+│   │   ├── components/   # UI components, AuthModal, Navbar, KnowledgeMatrix, Heatmap
+│   │   ├── pages/        # Dashboard, Subjects, Syllabus, Quiz, Chatbot, Resources, MockExam
+│   │   ├── lib/          # api.js, auth.js (JWT/Sync), llm.js
+│   │   └── store/        # Reactive global useStore with debounced cloud DB sync
 │   └── public/
-├── backend/              # Flask / Python API
-│   ├── app.py            # API entry point
-│   ├── routes/           # Syllabus, PYQ, Quiz, Chat, Resource routes
-│   ├── prompts/          # Structured system prompts
+├── backend/              # Flask / Python API + SQLAlchemy ORM
+│   ├── app.py            # API entry point & blueprint registration
+│   ├── database.py       # Engine & session management (SQLite / PostgreSQL)
+│   ├── models.py         # User, EmailOTP, UserStudyState models
+│   ├── routes/           # Auth (Register/Login/OTP), User Data Sync, Syllabus, PYQ, Quiz, Chat
+│   ├── prompts/          # Structured system prompts & dynamic prompt builders
 │   └── utils/
-│       ├── llm_caller.py # Multi-provider proxy
+│       ├── auth_utils.py # Password hashing, JWT token issuer, Email OTP engine
+│       ├── llm_caller.py # Multi-provider proxy & personalized prompt injector
 │       └── pdf_parser.py # PDF extraction engine
 └── README.md
 ```
