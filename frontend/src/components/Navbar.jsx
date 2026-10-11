@@ -10,7 +10,9 @@ import {
   Settings, 
   RotateCcw,
   Clock,
-  Layers
+  Layers,
+  Brain,
+  Users
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -95,19 +97,43 @@ export default function Navbar({
 
           <button
             onClick={() => setActiveTab('pyq')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
               activeTab === 'pyq'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>PYQ Engine</span>
+            <span>PYQs</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('community')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
+              activeTab === 'community'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Community</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('flashcards')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
+              activeTab === 'flashcards'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Brain className="w-4 h-4" />
+            <span>Flashcards</span>
           </button>
 
           <button
             onClick={() => setActiveTab('planner')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
               activeTab === 'planner'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -119,19 +145,19 @@ export default function Navbar({
 
           <button
             onClick={() => setActiveTab('quiz')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
               activeTab === 'quiz'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
             }`}
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Diagnostic Quiz</span>
+            <span>Quiz</span>
           </button>
 
           <button
             onClick={() => setActiveTab('mistakes')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
               activeTab === 'mistakes'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -143,7 +169,7 @@ export default function Navbar({
 
           <button
             onClick={() => setActiveTab('chatbot')}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
               activeTab === 'chatbot'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -189,6 +215,8 @@ export default function Navbar({
           { id: 'subjects', label: 'Subjects', icon: Layers },
           { id: 'syllabus', label: 'Syllabus', icon: BookOpen },
           { id: 'pyq', label: 'PYQs', icon: FileText },
+          { id: 'community', label: 'Community', icon: Users },
+          { id: 'flashcards', label: 'Flashcards', icon: Brain },
           { id: 'planner', label: 'Schedule', icon: Clock },
           { id: 'quiz', label: 'Quiz', icon: CheckCircle2 },
           { id: 'mistakes', label: 'Mistakes', icon: AlertTriangle },

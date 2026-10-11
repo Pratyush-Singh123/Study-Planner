@@ -12,7 +12,8 @@ import {
   ArrowUpRight,
   TrendingUp,
   Zap,
-  RotateCcw
+  RotateCcw,
+  Users
 } from 'lucide-react';
 import KnowledgeMatrix from '../components/KnowledgeMatrix';
 
@@ -167,13 +168,22 @@ export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic })
                 <h4 className="text-sm font-bold text-amber-300">
                   ⚠️ Recurring Conceptual Flaw Pattern Detected
                 </h4>
-                <button
-                  onClick={() => setActiveTab('mistakes')}
-                  className="text-xs text-amber-400 hover:text-amber-200 font-medium flex items-center space-x-1"
-                >
-                  <span>Review All ({mistakes.length})</span>
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setActiveTab('flashcards')}
+                    className="text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center space-x-1"
+                  >
+                    <Brain className="w-3.5 h-3.5" />
+                    <span>Practice in Flashcards</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('mistakes')}
+                    className="text-xs text-amber-400 hover:text-amber-200 font-medium flex items-center space-x-1"
+                  >
+                    <span>Review All ({mistakes.length})</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                 You've had multiple conceptual slips around <strong className="text-white">pointer reversal boundaries and tree rotation invariants</strong> across recent sessions.
@@ -209,20 +219,27 @@ export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic })
               Ranked mathematically: Highest exam frequency + largest knowledge gap + least time remaining
             </p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setActiveTab('flashcards')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-600/90 hover:bg-purple-600 text-white text-xs font-semibold shadow-md shadow-purple-600/20 transition-all"
+            >
+              <Brain className="w-3.5 h-3.5" />
+              <span>Flashcards</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('community')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors"
+            >
+              <Users className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Campus Archive</span>
+            </button>
             <button
               onClick={() => setActiveTab('planner')}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all"
             >
               <Target className="w-3.5 h-3.5" />
-              <span>Day-by-Day Schedule</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('chatbot')}
-              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors"
-            >
-              <Zap className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Ask AI Coach</span>
+              <span>Schedule</span>
             </button>
           </div>
         </div>

@@ -9,6 +9,8 @@ import StudyPlannerView from './pages/StudyPlannerView';
 import QuizView from './pages/QuizView';
 import ChatbotView from './pages/ChatbotView';
 import MistakeLogView from './pages/MistakeLogView';
+import FlashcardsView from './pages/FlashcardsView';
+import CommunityExplorerView from './pages/CommunityExplorerView';
 import { useStore } from './store/useStore';
 import { Sparkles, Info } from 'lucide-react';
 
@@ -70,6 +72,22 @@ export default function App() {
           <PYQView
             store={store}
             setActiveTab={setActiveTab}
+          />
+        )}
+
+        {activeTab === 'community' && (
+          <CommunityExplorerView
+            store={store}
+            setActiveTab={setActiveTab}
+            setSelectedQuizTopic={setSelectedQuizTopic}
+          />
+        )}
+
+        {activeTab === 'flashcards' && (
+          <FlashcardsView
+            store={store}
+            setActiveTab={setActiveTab}
+            setSelectedQuizTopic={setSelectedQuizTopic}
           />
         )}
 
