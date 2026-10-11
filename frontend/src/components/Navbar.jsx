@@ -106,6 +106,18 @@ export default function Navbar({
           </button>
 
           <button
+            onClick={() => setActiveTab('planner')}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'planner'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>Schedule</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('quiz')}
             className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'quiz'
@@ -177,6 +189,7 @@ export default function Navbar({
           { id: 'subjects', label: 'Subjects', icon: Layers },
           { id: 'syllabus', label: 'Syllabus', icon: BookOpen },
           { id: 'pyq', label: 'PYQs', icon: FileText },
+          { id: 'planner', label: 'Schedule', icon: Clock },
           { id: 'quiz', label: 'Quiz', icon: CheckCircle2 },
           { id: 'mistakes', label: 'Mistakes', icon: AlertTriangle },
           { id: 'chatbot', label: 'AI Coach', icon: MessageSquare }

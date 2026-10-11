@@ -14,6 +14,7 @@ import {
   Zap,
   RotateCcw
 } from 'lucide-react';
+import KnowledgeMatrix from '../components/KnowledgeMatrix';
 
 export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic }) {
   const { state, calculatePriorityQueue, resolveMistake } = store;
@@ -190,9 +191,15 @@ export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic })
         </div>
       )}
 
+      {/* 4-Quadrant Knowledge Risk Matrix */}
+      <KnowledgeMatrix 
+        priorityList={priorityList} 
+        onSelectTopic={handleStartQuiz} 
+      />
+
       {/* Main Feature: The Adaptive Priority Queue */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-white flex items-center space-x-2">
               <Flame className="w-5 h-5 text-rose-500" />
@@ -202,13 +209,22 @@ export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic })
               Ranked mathematically: Highest exam frequency + largest knowledge gap + least time remaining
             </p>
           </div>
-          <button
-            onClick={() => setActiveTab('chatbot')}
-            className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-colors"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>Generate 45-Min Sprint</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setActiveTab('planner')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all"
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span>Day-by-Day Schedule</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('chatbot')}
+              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors"
+            >
+              <Zap className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Ask AI Coach</span>
+            </button>
+          </div>
         </div>
 
         <div className="space-y-3">

@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import SubjectSetupView from './pages/SubjectSetupView';
 import SyllabusView from './pages/SyllabusView';
 import PYQView from './pages/PYQView';
+import StudyPlannerView from './pages/StudyPlannerView';
 import QuizView from './pages/QuizView';
 import ChatbotView from './pages/ChatbotView';
 import MistakeLogView from './pages/MistakeLogView';
@@ -69,6 +70,14 @@ export default function App() {
           <PYQView
             store={store}
             setActiveTab={setActiveTab}
+          />
+        )}
+
+        {activeTab === 'planner' && (
+          <StudyPlannerView
+            store={store}
+            setActiveTab={setActiveTab}
+            setSelectedQuizTopic={setSelectedQuizTopic}
           />
         )}
 
