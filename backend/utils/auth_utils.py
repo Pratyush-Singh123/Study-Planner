@@ -11,16 +11,27 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_db
 from models import User, EmailOTP
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "gapfill_jwt_secret_dev_production_key_2026")
+JWT_SECRET = os.environ.get("JWT_SECRET", "gapfill_jwt_secret_dev_production_secure_key_2026_super_strong_v2")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_DAYS = 7
 
 def get_smtp_config():
+    if not os.environ.get("SMTP_USER"):
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env_file = os.path.join(backend_dir, '.env')
+        if os.path.exists(env_file):
+            with open(env_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        k, v = line.split('=', 1)
+                        os.environ[k.strip()] = v.strip().strip('"').strip("'")
+
     host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
     port = int(os.environ.get("SMTP_PORT", 587))
-    user = os.environ.get("SMTP_USER", "")
-    password = os.environ.get("SMTP_PASS", "").replace(" ", "")
-    sender = os.environ.get("SMTP_FROM", user or "no-reply@gapfill.edu")
+    user = os.environ.get("SMTP_USER", "").strip()
+    password = os.environ.get("SMTP_PASS", "").replace(" ", "").strip()
+    sender = os.environ.get("SMTP_FROM", f"GapFill Security <{user}>" if user else "no-reply@gapfill.edu")
     return host, port, user, password, sender
 
 def hash_password(password: str) -> str:

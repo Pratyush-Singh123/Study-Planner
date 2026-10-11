@@ -1,8 +1,9 @@
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from backend/.env explicitly
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BACKEND_DIR, '.env'))
 
 from flask import Flask, jsonify
 from flask_cors import CORS
