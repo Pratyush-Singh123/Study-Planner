@@ -15,12 +15,13 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "gapfill_jwt_secret_dev_production_key
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_DAYS = 7
 
-# SMTP configuration from environment variables
-SMTP_HOST = os.environ.get("SMTP_HOST", "")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", 587))
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
-SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER or "no-reply@gapfill.edu")
+def get_smtp_config():
+    host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    port = int(os.environ.get("SMTP_PORT", 587))
+    user = os.environ.get("SMTP_USER", "")
+    password = os.environ.get("SMTP_PASS", "").replace(" ", "")
+    sender = os.environ.get("SMTP_FROM", user or "no-reply@gapfill.edu")
+    return host, port, user, password, sender
 
 def hash_password(password: str) -> str:
     return generate_password_hash(password, method="scrypt")
@@ -94,23 +95,24 @@ def send_email_otp(to_email: str, otp_code: str, purpose: str = "registration") 
     """
 
     # If SMTP credentials are provided, attempt delivery
-    if SMTP_HOST and SMTP_USER and SMTP_PASS:
+    smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from = get_smtp_config()
+    if smtp_user and smtp_pass:
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
-            msg["From"] = SMTP_FROM
+            msg["From"] = smtp_from
             msg["To"] = to_email
 
             text_fallback = f"Your GapFill verification code is {otp_code}. Valid for 10 minutes."
             msg.attach(MIMEText(text_fallback, "plain"))
             msg.attach(MIMEText(html_content, "html"))
 
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=12) as server:
                 server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(SMTP_FROM, [to_email], msg.as_string())
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, [to_email], msg.as_string())
 
-            print(f"📧 [SMTP] Successfully sent OTP email to {to_email}")
+            print(f"📧 [Gmail SMTP] Real verification email successfully delivered to {to_email}!")
             return True, "Email sent successfully"
         except Exception as e:
             print(f"⚠️ [SMTP Error] Failed to send email to {to_email}: {e}")
