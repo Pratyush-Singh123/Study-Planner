@@ -6,14 +6,13 @@ import {
   Trash2, 
   Edit3, 
   Check, 
-  FileText, 
-  Clock, 
+  Layers, 
+  AlertCircle,
+  X,
   ArrowRight,
-  Layers,
-  UploadCloud,
-  AlertCircle
+  Save
 } from 'lucide-react';
-import { callLLM } from '../lib/llm';
+import { parseSyllabusAPI } from '../lib/api';
 
 const SAMPLE_SYLLABI = {
   dsa: `Unit 1: Arrays and Dynamic Memory - Arrays, Amortized Analysis of resizing, Dynamic Memory Allocation, Singly and Doubly Linked Lists, Circular Lists.
@@ -30,103 +29,84 @@ Unit 5: Storage and File Systems - Disk Scheduling (FCFS, SSTF, SCAN, C-SCAN), F
 
 export default function SyllabusView({ store, setActiveTab }) {
   const { state, setRawSyllabus, setTopics, addSubject } = store;
-  const currentSubject = state.subjects[0];
+  const [selectedSubjectId, setSelectedSubjectId] = useState(state.subjects[0]?.id || '');
+
+  const activeSubject = state.subjects.find(s => s.id === selectedSubjectId) || state.subjects[0];
+  const activeSubjectId = activeSubject?.id || 'cs_sub_1';
 
   const [rawText, setRawText] = useState(
-    currentSubject ? (state.rawSyllabus[currentSubject.id] || '') : SAMPLE_SYLLABI.dsa
+    state.rawSyllabus?.[activeSubjectId] || SAMPLE_SYLLABI.dsa
   );
-  const [subjectName, setSubjectName] = useState(currentSubject?.name || 'Data Structures & Algorithms');
-  const [examDate, setExamDate] = useState(currentSubject?.examDate || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmed, setConfirmed] = useState(false);
 
   // Extracted topics (editing mode)
-  const currentTopics = currentSubject ? (state.topics[currentSubject.id] || []) : [];
+  const currentTopics = state.topics?.[activeSubjectId] || [];
   const [editableTopics, setEditableTopics] = useState(currentTopics);
+
+  // Manual Add Modal State
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [manualTopicName, setManualTopicName] = useState('');
+  const [manualDifficulty, setManualDifficulty] = useState('Medium');
+  const [manualHours, setManualHours] = useState(2);
 
   const handleParse = async () => {
     if (!rawText.trim()) return;
     setLoading(true);
     setError(null);
-
-    const systemPrompt = `You are an academic syllabus parser. Given raw syllabus text for a subject, extract a structured list of topics. For each topic return:
-- name: short topic name
-- description: one sentence what it covers
-- difficulty: Easy | Medium | Hard (estimate based on typical university curriculum)
-- estimatedHours: number (realistic study hours needed: 1, 2, or 3)
-- prerequisites: list of other topic names from this syllabus that must be understood first
-
-Return ONLY valid JSON. No markdown ticks, no preamble, no explanation.
-Format:
-{
-  "topics": [
-    {
-      "name": "Topic Name",
-      "description": "Short description",
-      "difficulty": "Easy|Medium|Hard",
-      "estimatedHours": 2,
-      "prerequisites": []
-    }
-  ]
-}`;
-
-    const userMessage = `Subject: ${subjectName}\nSyllabus:\n${rawText}`;
+    setConfirmed(false);
 
     try {
-      const response = await callLLM(systemPrompt, userMessage);
-      // Clean possible markdown code fences
-      const cleanJson = response.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      if (parsed.topics && Array.isArray(parsed.topics)) {
-        setEditableTopics(parsed.topics);
-        // Save to store
-        let subId = currentSubject?.id;
-        if (!subId) {
-          subId = addSubject({ name: subjectName, examDate, difficulty: 'Medium' });
-        }
-        setRawSyllabus(subId, rawText);
-        setTopics(subId, parsed.topics);
+      const parsedTopics = await parseSyllabusAPI(activeSubject?.name || 'Computer Science', rawText);
+      if (parsedTopics && Array.isArray(parsedTopics)) {
+        setEditableTopics(parsedTopics);
+        setRawSyllabus(activeSubjectId, rawText);
+        setTopics(activeSubjectId, parsedTopics);
       } else {
-        throw new Error("Invalid structure returned by AI.");
+        throw new Error("Invalid structure returned by AI parser.");
       }
     } catch (err) {
       console.error(err);
-      setError(`Parsing error: ${err.message}. Retrying with structured fallback.`);
+      setError(`Parsing error: ${err.message}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirmTopics = () => {
+    setTopics(activeSubjectId, editableTopics);
+    setConfirmed(true);
+    setTimeout(() => setConfirmed(false), 3000);
   };
 
   const handleTopicChange = (idx, field, value) => {
     const updated = [...editableTopics];
     updated[idx] = { ...updated[idx], [field]: value };
     setEditableTopics(updated);
-    if (currentSubject) {
-      setTopics(currentSubject.id, updated);
-    }
   };
 
   const handleDeleteTopic = (idx) => {
     const updated = editableTopics.filter((_, i) => i !== idx);
     setEditableTopics(updated);
-    if (currentSubject) {
-      setTopics(currentSubject.id, updated);
-    }
+    setTopics(activeSubjectId, updated);
   };
 
-  const handleAddTopic = () => {
+  const handleAddManualTopic = (e) => {
+    e.preventDefault();
+    if (!manualTopicName.trim()) return;
     const newTopic = {
-      name: "New Syllabus Topic",
-      description: "Brief overview of concepts covered",
-      difficulty: "Medium",
-      estimatedHours: 2,
+      name: manualTopicName.trim(),
+      description: `Manual curriculum topic`,
+      difficulty: manualDifficulty,
+      estimatedHours: Number(manualHours) || 2,
       prerequisites: []
     };
     const updated = [...editableTopics, newTopic];
     setEditableTopics(updated);
-    if (currentSubject) {
-      setTopics(currentSubject.id, updated);
-    }
+    setTopics(activeSubjectId, updated);
+    setManualTopicName('');
+    setIsManualModalOpen(false);
   };
 
   return (
@@ -139,76 +119,69 @@ Format:
           <span>Curriculum Ingestion</span>
         </div>
         <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
-          AI Syllabus Parser & Topic Breakdown
+          Syllabus Parser & Topic Review
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Paste your university syllabus. GapFill extracts structured topics, prerequisite trees, and study weights.
+          Paste syllabus units or add topics manually. GapFill extracts structured topics, prerequisite trees, and study weights.
         </p>
+      </div>
+
+      {/* Tabs per Subject */}
+      <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+        {state.subjects.map(s => (
+          <button
+            key={s.id}
+            onClick={() => {
+              setSelectedSubjectId(s.id);
+              setRawText(state.rawSyllabus?.[s.id] || '');
+              setEditableTopics(state.topics?.[s.id] || []);
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              (activeSubject?.id === s.id)
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            {s.name}
+          </button>
+        ))}
       </div>
 
       {/* Input Section */}
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 space-y-6">
         
-        {/* Subject Metadata Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-              Subject Name
-            </label>
-            <input
-              type="text"
-              value={subjectName}
-              onChange={(e) => setSubjectName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-              placeholder="e.g. Data Structures & Algorithms"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-              Target Exam Date
-            </label>
-            <input
-              type="date"
-              value={examDate}
-              onChange={(e) => setExamDate(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-            />
+        {/* Header & Presets */}
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Paste Syllabus Outline for {activeSubject?.name || 'Selected Subject'}
+          </label>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-slate-500 hidden sm:inline">Presets:</span>
+            <button
+              type="button"
+              onClick={() => setRawText(SAMPLE_SYLLABI.dsa)}
+              className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-indigo-300 hover:bg-slate-700 transition-colors"
+            >
+              DSA
+            </button>
+            <button
+              type="button"
+              onClick={() => setRawText(SAMPLE_SYLLABI.os)}
+              className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-indigo-300 hover:bg-slate-700 transition-colors"
+            >
+              OS
+            </button>
           </div>
         </div>
 
         {/* Syllabus Textarea */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Raw Syllabus Text or Course Outline
-            </label>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-slate-500 hidden sm:inline">Quick Presets:</span>
-              <button
-                type="button"
-                onClick={() => setRawText(SAMPLE_SYLLABI.dsa)}
-                className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-indigo-300 hover:bg-slate-700 transition-colors"
-              >
-                DSA
-              </button>
-              <button
-                type="button"
-                onClick={() => setRawText(SAMPLE_SYLLABI.os)}
-                className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-indigo-300 hover:bg-slate-700 transition-colors"
-              >
-                OS
-              </button>
-            </div>
-          </div>
-
-          <textarea
-            rows={7}
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-            placeholder="Paste syllabus modules, units, or topic outlines..."
-            className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 font-mono text-xs leading-relaxed"
-          />
-        </div>
+        <textarea
+          rows={7}
+          value={rawText}
+          onChange={(e) => setRawText(e.target.value)}
+          placeholder="Paste syllabus modules, units, or topic outlines..."
+          className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 leading-relaxed"
+        />
 
         {error && (
           <div className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2">
@@ -217,48 +190,69 @@ Format:
           </div>
         )}
 
-        {/* Action Button */}
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-slate-500">
-            AI extracts topics, dependencies, and assigns realistic hours.
-          </p>
+        {/* Buttons Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => setIsManualModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors flex items-center justify-center space-x-1.5"
+          >
+            <Plus className="w-4 h-4 text-indigo-400" />
+            <span>Add Topics Manually</span>
+          </button>
+
           <button
             type="button"
             onClick={handleParse}
-            disabled={loading}
-            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-xl shadow-indigo-600/30 transition-all flex items-center space-x-2 disabled:opacity-50"
+            disabled={loading || !rawText.trim()}
+            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
           >
             {loading ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <Sparkles className="w-4 h-4" />
             )}
-            <span>{loading ? "Extracting Topics with AI..." : "Parse Syllabus with AI"}</span>
+            <span>{loading ? "Extracting Topics with AI..." : "Parse with AI"}</span>
           </button>
         </div>
 
       </div>
 
-      {/* Review Screen: Structured Topics Table */}
+      {/* Topic Review Screen: Structured Topics Table */}
       {editableTopics.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-white flex items-center space-x-2">
                 <Layers className="w-5 h-5 text-indigo-400" />
                 <span>Extracted Curriculum ({editableTopics.length} Topics)</span>
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Review and adjust difficulty or hours before proceeding to PYQs or Quizzes.
+                Edit topics inline. Click "Confirm Topics" to commit to study queue.
               </p>
             </div>
-            <button
-              onClick={handleAddTopic}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Topic</span>
-            </button>
+
+            <div className="flex items-center space-x-2.5">
+              <button
+                onClick={handleConfirmTopics}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1.5 ${
+                  confirmed 
+                    ? 'bg-emerald-600 text-white' 
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                }`}
+              >
+                {confirmed ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                <span>{confirmed ? 'Topics Confirmed!' : 'Confirm Topics'}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('pyq')}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center space-x-1"
+              >
+                <span>Proceed to PYQs</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -266,10 +260,9 @@ Format:
               <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
                 <tr>
                   <th className="py-3 px-4">Topic Name</th>
-                  <th className="py-3 px-4">Description</th>
                   <th className="py-3 px-4">Difficulty</th>
                   <th className="py-3 px-4">Est. Hours</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-3 px-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -283,16 +276,6 @@ Format:
                         value={topic.name}
                         onChange={(e) => handleTopicChange(idx, 'name', e.target.value)}
                         className="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:bg-slate-950 px-1 py-0.5 rounded text-white font-medium text-xs w-full focus:outline-none"
-                      />
-                    </td>
-
-                    {/* Description */}
-                    <td className="py-3 px-4 text-slate-400 max-w-xs">
-                      <input
-                        type="text"
-                        value={topic.description || ''}
-                        onChange={(e) => handleTopicChange(idx, 'description', e.target.value)}
-                        className="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:bg-slate-950 px-1 py-0.5 rounded text-slate-300 text-xs w-full focus:outline-none"
                       />
                     </td>
 
@@ -327,11 +310,12 @@ Format:
                       </div>
                     </td>
 
-                    {/* Actions */}
+                    {/* Action */}
                     <td className="py-3 px-4 text-right">
                       <button
                         onClick={() => handleDeleteTopic(idx)}
                         className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors"
+                        title="Delete topic"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -342,20 +326,79 @@ Format:
               </tbody>
             </table>
           </div>
+        </div>
+      )}
 
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-            <span className="text-xs text-slate-400 font-medium">
-              Ready to calculate exam priority?
-            </span>
-            <button
-              onClick={() => setActiveTab('pyq')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all flex items-center space-x-1.5"
-            >
-              <span>Next: Map Past Exam Questions</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+      {/* Add Topic Manually Modal */}
+      {isManualModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white">Add Topic Manually</h3>
+              <button 
+                onClick={() => setIsManualModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddManualTopic} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Topic Name</label>
+                <input
+                  type="text"
+                  required
+                  value={manualTopicName}
+                  onChange={(e) => setManualTopicName(e.target.value)}
+                  placeholder="e.g. Dynamic Programming & Memoization"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Difficulty</label>
+                  <select
+                    value={manualDifficulty}
+                    onChange={(e) => setManualDifficulty(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Est. Hours</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={manualHours}
+                    onChange={(e) => setManualHours(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsManualModalOpen(false)}
+                  className="px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl"
+                >
+                  Add Topic
+                </button>
+              </div>
+            </form>
           </div>
-
         </div>
       )}
 

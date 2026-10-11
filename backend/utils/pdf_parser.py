@@ -1,46 +1,56 @@
-"""
-PDF extraction utility for GapFill
-Extracts raw text from uploaded university syllabus or PYQ question papers.
-"""
+import re
 import io
 import sys
 
-def extract_text_from_pdf(file_bytes_or_path):
+def extract_questions_from_pdf(file_path_or_bytes):
     """
-    Attempts to extract text using PyMuPDF (fitz), then pypdf as fallback.
+    Extracts text from PDF and splits into individual questions
+    using standard university exam question numbering conventions.
     """
     text = ""
-    # Try PyMuPDF
     try:
-        import fitz
-        if isinstance(file_bytes_or_path, (bytes, bytearray)):
-            doc = fitz.open(stream=file_bytes_or_path, filetype="pdf")
+        import pdfplumber
+        if isinstance(file_path_or_bytes, (bytes, bytearray)):
+            pdf_file = io.BytesIO(file_path_or_bytes)
         else:
-            doc = fitz.open(file_bytes_or_path)
-            
-        for page in doc:
-            text += page.get_text() + "\n"
-        doc.close()
-        if text.strip():
-            return text.strip()
-    except Exception as e:
-        print(f"[pdf_parser] PyMuPDF extraction failed: {e}", file=sys.stderr)
+            pdf_file = file_path_or_bytes
 
-    # Try pypdf
-    try:
-        import pypdf
-        if isinstance(file_bytes_or_path, (bytes, bytearray)):
-            reader = pypdf.PdfReader(io.BytesIO(file_bytes_or_path))
-        else:
-            reader = pypdf.PdfReader(file_bytes_or_path)
-            
-        for page in reader.pages:
-            t = page.extract_text()
-            if t:
-                text += t + "\n"
-        if text.strip():
-            return text.strip()
+        with pdfplumber.open(pdf_file) as pdf:
+            for page in pdf.pages:
+                extracted = page.extract_text()
+                if extracted:
+                    text += extracted + "\n"
     except Exception as e:
-        print(f"[pdf_parser] pypdf extraction failed: {e}", file=sys.stderr)
+        print(f"[pdf_parser] pdfplumber error: {e}, attempting pypdf fallback", file=sys.stderr)
+        try:
+            import pypdf
+            if isinstance(file_path_or_bytes, (bytes, bytearray)):
+                reader = pypdf.PdfReader(io.BytesIO(file_path_or_bytes))
+            else:
+                reader = pypdf.PdfReader(file_path_or_bytes)
+            for page in reader.pages:
+                t = page.extract_text()
+                if t:
+                    text += t + "\n"
+        except Exception as e2:
+            print(f"[pdf_parser] pypdf error: {e2}", file=sys.stderr)
 
-    return text.strip()
+    # Split by common question numbering patterns
+    patterns = [
+        r'\n(?=Q\d+[\.\)])',       # Q1. Q2. Q1) Q2)
+        r'\n(?=\d+[\.\)])',        # 1. 2. 1) 2)
+        r'\n(?=[Qq]uestion\s+\d)', # Question 1 Question 2
+    ]
+
+    questions = []
+    for pattern in patterns:
+        parts = re.split(pattern, text)
+        if len(parts) > 2:
+            questions = [p.strip() for p in parts if len(p.strip()) > 15]
+            break
+
+    # Fallback: split by double newlines if no pattern matched
+    if not questions:
+        questions = [p.strip() for p in text.split('\n\n') if len(p.strip()) > 15]
+
+    return questions[:50]  # Cap at 50 questions

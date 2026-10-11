@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import SettingsModal from './components/SettingsModal';
 import Dashboard from './pages/Dashboard';
+import SubjectSetupView from './pages/SubjectSetupView';
 import SyllabusView from './pages/SyllabusView';
 import PYQView from './pages/PYQView';
 import QuizView from './pages/QuizView';
@@ -47,6 +48,13 @@ export default function App() {
             store={store}
             setActiveTab={setActiveTab}
             setSelectedQuizTopic={setSelectedQuizTopic}
+          />
+        )}
+
+        {activeTab === 'subjects' && (
+          <SubjectSetupView
+            store={store}
+            setActiveTab={setActiveTab}
           />
         )}
 

@@ -1,19 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  MessageSquare, 
-  Send, 
   Sparkles, 
   Bot, 
   User, 
-  Brain, 
-  Flame, 
-  Clock, 
-  HelpCircle,
-  Zap,
-  CheckCircle2,
-  RotateCcw
+  Send, 
+  RotateCcw, 
+  Zap 
 } from 'lucide-react';
-import { callLLM } from '../lib/llm';
+import { marked } from 'marked';
+import { chatCoachAPI } from '../lib/api';
 
 export default function ChatbotView({ store, setActiveTab }) {
   const { state, calculatePriorityQueue } = store;
@@ -23,8 +18,8 @@ export default function ChatbotView({ store, setActiveTab }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: `Hello! I'm **GapFill**, your personalized academic study coach.\n\n` +
-        `I know your syllabus for **${currentSubject?.name || 'your courses'}**, your upcoming exam deadlines, your **${Object.keys(state.gapScores).length} tracked knowledge gaps**, and your recent conceptual errors.\n\n` +
+      content: `Hello! I'm **GapFill**, your personal academic study coach.\n\n` +
+        `I know your syllabus for **${currentSubject?.name || 'your courses'}**, your upcoming exam deadlines, your **${Object.keys(state.gapScores || {}).length} tracked knowledge gaps**, and your recent conceptual errors.\n\n` +
         `Ask me anything — what to study right now, how to resolve your recurring mistakes, or how to pace your next 45 minutes.`
     }
   ]);
@@ -40,33 +35,6 @@ export default function ChatbotView({ store, setActiveTab }) {
     scrollToBottom();
   }, [messages, loading]);
 
-  // Construct context-rich system prompt dynamically
-  const buildSystemPrompt = () => {
-    const subjectsSummary = state.subjects.map(s => `${s.name} (Exam: ${s.examDate || 'Soon'})`).join(', ');
-    const topGaps = priorityList.slice(0, 5).map(p => 
-      `${p.topic.name}: Gap ${p.gapScore}%, Exam Frequency ${p.pyqPercent}%, Priority ${p.priorityLevel}`
-    ).join('; ');
-    const recentMistakes = state.mistakeLog.slice(0, 5).map(m => 
-      `Topic [${m.topic}]: "${m.conceptualError}"`
-    ).join(' | ');
-
-    return `You are GapFill, a hyper-personalized academic study coach for a university student.
-You have full access to this student's live academic profile.
-
-STUDENT PROFILE:
-- Subjects & Dates: ${subjectsSummary}
-- Today's Date: ${new Date().toLocaleDateString()}
-- Top Knowledge Gaps & Exam Frequencies: ${topGaps}
-- Recent Conceptual Errors (Mistake Memory): ${recentMistakes || "None logged yet"}
-
-RULES:
-- Always refer to specific topics from their syllabus, never generic advice.
-- When they ask "what should I study right now?", strictly rank by Priority Score = Gap Score × PYQ Exam Frequency × (1 / Days Until Exam).
-- Reference their exact conceptual mistakes when relevant (e.g., "be careful with pointer reversal boundaries").
-- When recommending resources, provide specific search queries or exact pedagogical advice.
-- Keep answers structured, motivating, and actionable with bullet points.`;
-  };
-
   const handleSendMessage = async (userText = inputText) => {
     const textToSend = userText.trim();
     if (!textToSend || loading) return;
@@ -76,9 +44,16 @@ RULES:
     setInputText('');
     setLoading(true);
 
+    const context = {
+      subjects: state.subjects,
+      topics: currentSubject ? (state.topics[currentSubject.id] || []) : [],
+      gapScores: state.gapScores || {},
+      mistakeLog: state.mistakeLog || [],
+      currentDate: new Date().toISOString().split('T')[0]
+    };
+
     try {
-      const systemPrompt = buildSystemPrompt();
-      const response = await callLLM(systemPrompt, textToSend, newHistory);
+      const response = await chatCoachAPI(textToSend, newHistory, context);
       setMessages([...newHistory, { role: 'assistant', content: response }]);
     } catch (err) {
       setMessages([
@@ -145,13 +120,21 @@ RULES:
                   {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
 
-                {/* Bubble */}
+                {/* Bubble with marked.js Markdown Rendering */}
                 <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-4 text-xs leading-relaxed ${
                   isUser
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 rounded-tr-sm'
-                    : 'bg-slate-950/80 border border-slate-800/80 text-slate-200 rounded-tl-sm whitespace-pre-wrap'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 rounded-tr-sm whitespace-pre-wrap'
+                    : 'bg-slate-950/80 border border-slate-800/80 text-slate-200 rounded-tl-sm prose prose-invert prose-xs max-w-none'
                 }`}>
-                  {msg.content}
+                  {isUser ? (
+                    msg.content
+                  ) : (
+                    <div 
+                      dangerouslySetInnerHTML={{ 
+                        __html: marked.parse(msg.content, { breaks: true }) 
+                      }} 
+                    />
+                  )}
                 </div>
               </div>
             );

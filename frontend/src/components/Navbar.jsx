@@ -70,6 +70,18 @@ export default function Navbar({
           </button>
 
           <button
+            onClick={() => setActiveTab('subjects')}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'subjects'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Subjects</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('syllabus')}
             className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'syllabus'
@@ -162,6 +174,7 @@ export default function Navbar({
       <div className="flex md:hidden overflow-x-auto space-x-2 pt-2.5 pb-1 border-t border-slate-800/60 mt-2.5 scrollbar-none">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { id: 'subjects', label: 'Subjects', icon: Layers },
           { id: 'syllabus', label: 'Syllabus', icon: BookOpen },
           { id: 'pyq', label: 'PYQs', icon: FileText },
           { id: 'quiz', label: 'Quiz', icon: CheckCircle2 },

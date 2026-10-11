@@ -16,7 +16,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { callLLM } from '../lib/llm';
+import { evaluateQuizAnswerAPI, recommendResourceAPI, generateQuestionsAPI } from '../lib/api';
 
 export default function QuizView({ 
   store, 
@@ -73,35 +73,24 @@ export default function QuizView({
       return;
     }
 
-    // Otherwise generate 3 dynamic exam questions
-    const systemPrompt = `Generate 3 exam-style questions for the topic "${topicName}".
-Return ONLY valid JSON:
-{
-  "questions": [
-    {
-      "id": "q1",
-      "question": "Question text...",
-      "marks": 5,
-      "correctAnswer": "Brief key points"
-    }
-  ]
-}`;
-
     try {
-      const res = await callLLM(systemPrompt, `Topic: ${topicName}`);
-      const cleanJson = res.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      if (parsed.questions && Array.isArray(parsed.questions)) {
-        setQuestions(parsed.questions);
+      const generated = await generateQuestionsAPI(
+        topicName,
+        currentSubject?.name || 'Computer Science',
+        'Medium',
+        3
+      );
+      if (generated && Array.isArray(generated) && generated.length > 0) {
+        setQuestions(generated);
       } else {
-        throw new Error("Invalid questions response");
+        throw new Error("No questions generated");
       }
     } catch (e) {
       // Fallback default questions
       setQuestions([
         {
           id: "fb1",
-          question: `Explain the fundamental concept of ${topicName} and why it is used in computer science.`,
+          question: `Explain the fundamental concept of ${topicName} and why it is essential in university exams.`,
           marks: 5
         },
         {
@@ -122,32 +111,19 @@ Return ONLY valid JSON:
     setStuckResource(null);
 
     const q = questions[currentIdx];
-    const systemPrompt = `You are evaluating a student's answer to an exam question.
-Topic: ${activeTopic}
-Question: ${q.question}
-Correct approach: ${q.correctAnswer || "Academic standard answer"}
-Student's answer: ${studentAnswer}
-
-Evaluate and return ONLY valid JSON:
-{
-  "correct": true|false,
-  "score": 0-10,
-  "conceptualError": "what the student conceptually misunderstood (null if correct)",
-  "errorCategory": "Mental Model Misconception|Edge Case Overlooked|Terminology Confusion|None",
-  "explanation": "clear explanation of the correct approach",
-  "hint": "one-line hint if they want to try again",
-  "relatedTopics": ["topics they should review based on this mistake"]
-}`;
 
     try {
-      const res = await callLLM(systemPrompt, studentAnswer);
-      const cleanJson = res.replace(/```json/g, '').replace(/```/g, '').trim();
-      const feedback = JSON.parse(cleanJson);
+      const feedback = await evaluateQuizAnswerAPI(
+        activeTopic,
+        q.question,
+        studentAnswer,
+        q.keyPoints || [q.correctAnswer || "Standard academic answer"]
+      );
 
       setCurrentFeedback(feedback);
       const newResult = {
         questionId: q.id,
-        score: feedback.score || (feedback.correct ? 9 : 3),
+        score: feedback.score ?? (feedback.correct ? 9 : 3),
         correct: feedback.correct
       };
       const updatedResults = [...sessionResults, newResult];
@@ -175,7 +151,6 @@ Evaluate and return ONLY valid JSON:
       }
     } catch (e) {
       console.error(e);
-      // Fallback grading
       const fallback = {
         correct: studentAnswer.length > 25,
         score: studentAnswer.length > 25 ? 8 : 4,
@@ -202,25 +177,14 @@ Evaluate and return ONLY valid JSON:
     if (!currentFeedback?.conceptualError) return;
     setLoadingResource(true);
 
-    const systemPrompt = `A student is stuck on a specific concept. Recommend the single best targeted resource for that exact confusion — not the topic generally.
-Subject: ${currentSubject?.name || 'Computer Science'}
-Topic: ${activeTopic}
-Their confusion: ${currentFeedback.conceptualError}
-Learning style: video
-
-Return ONLY valid JSON:
-{
-  "resourceType": "video|article",
-  "title": "specific resource name or creator",
-  "why": "one sentence why this is the best fit for their confusion",
-  "searchQuery": "exact search query to find it on YouTube/Google"
-}`;
-
     try {
-      const res = await callLLM(systemPrompt, `Confusion: ${currentFeedback.conceptualError}`);
-      const cleanJson = res.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      setStuckResource(parsed);
+      const rec = await recommendResourceAPI(
+        activeTopic,
+        currentSubject?.name || 'Computer Science',
+        currentFeedback.conceptualError,
+        'video'
+      );
+      setStuckResource(rec);
     } catch (err) {
       setStuckResource({
         resourceType: "video",
@@ -349,7 +313,7 @@ Return ONLY valid JSON:
                 ) : (
                   <Send className="w-3.5 h-3.5" />
                 )}
-                <span>{evaluating ? 'Diagnosing Conceptual Reasoning...' : 'Submit & Diagnose Answer'}</span>
+                <span>{evaluating ? 'Diagnosing Conceptual Reasoning...' : 'Submit Answer'}</span>
               </button>
             </div>
           )}
@@ -415,7 +379,7 @@ Return ONLY valid JSON:
                 </div>
               )}
 
-              {/* "I'm Stuck" Resource Recommender Button */}
+              {/* "Find Me a Resource" Button */}
               {!currentFeedback.correct && (
                 <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between">
                   <span className="text-xs text-slate-400">
@@ -427,7 +391,7 @@ Return ONLY valid JSON:
                     className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-colors"
                   >
                     <Video className="w-3.5 h-3.5" />
-                    <span>{loadingResource ? 'Finding best resource...' : "I'm Stuck — Find Resource"}</span>
+                    <span>{loadingResource ? 'Finding best resource...' : "Find me a resource"}</span>
                   </button>
                 </div>
               )}
@@ -446,7 +410,7 @@ Return ONLY valid JSON:
                     rel="noreferrer"
                     className="inline-flex items-center space-x-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-semibold mt-1"
                   >
-                    <span>Search YouTube: "{stuckResource.searchQuery}"</span>
+                    <span>Search: "{stuckResource.searchQuery}"</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>

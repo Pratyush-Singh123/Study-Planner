@@ -6,13 +6,12 @@ import {
   Users, 
   Bot, 
   CheckCircle2, 
-  ArrowRight,
-  TrendingUp,
-  HelpCircle,
-  Plus,
-  AlertCircle
+  ArrowRight, 
+  TrendingUp, 
+  AlertCircle 
 } from 'lucide-react';
-import { callLLM } from '../lib/llm';
+import { mapPYQsAPI, generateQuestionsAPI, uploadPYQPDFAPI } from '../lib/api';
+import { getFromPool, saveToPool } from '../lib/communityPool';
 
 export default function PYQView({ store, setActiveTab }) {
   const { state, addBulkPYQs } = store;
@@ -25,6 +24,7 @@ export default function PYQView({ store, setActiveTab }) {
   const [selectedTopicForGen, setSelectedTopicForGen] = useState(topics[0]?.name || '');
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
+  const [collegeName, setCollegeName] = useState('IIITDM');
 
   // Frequency calculation
   const totalPYQs = pyqs.length || 1;
@@ -41,35 +41,24 @@ export default function PYQView({ store, setActiveTab }) {
     };
   }).sort((a, b) => b.count - a.count);
 
-  // 1. Handle Mapping Past Questions via AI
+  // 1. Handle Mapping Past Questions via API
   const handleMapQuestions = async () => {
     if (!pastedQuestions.trim()) return;
     setLoading(true);
     setStatusMessage(null);
 
+    const questionLines = pastedQuestions
+      .split('\n')
+      .map(q => q.trim())
+      .filter(q => q.length > 10);
     const topicNames = topics.map(t => t.name);
-    const systemPrompt = `You are given a list of exam questions and a list of syllabus topics. Map each question to the most relevant topic from the list.
-Return ONLY valid JSON:
-{
-  "mappings": [
-    {
-      "question": "question text",
-      "topic": "topic name from the provided list",
-      "marks": 5,
-      "year": 2024
-    }
-  ]
-}`;
-
-    const userMessage = `Topics: ${JSON.stringify(topicNames)}\n\nQuestions:\n${pastedQuestions}`;
 
     try {
-      const response = await callLLM(systemPrompt, userMessage);
-      const cleanJson = response.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      if (parsed.mappings && Array.isArray(parsed.mappings)) {
-        addBulkPYQs(currentSubject.id, parsed.mappings);
-        setStatusMessage(`Successfully mapped ${parsed.mappings.length} questions across your syllabus!`);
+      const res = await mapPYQsAPI(questionLines, topicNames);
+      if (res.mappings && Array.isArray(res.mappings)) {
+        addBulkPYQs(currentSubject.id, res.mappings);
+        saveToPool(collegeName, currentSubject?.name, questionLines);
+        setStatusMessage(`Successfully mapped ${res.mappings.length} questions across your syllabus!`);
         setPastedQuestions('');
       } else {
         throw new Error("Could not parse question mappings.");
@@ -77,6 +66,28 @@ Return ONLY valid JSON:
     } catch (err) {
       console.error(err);
       setStatusMessage(`AI Error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // PDF File Upload
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    setStatusMessage(`Parsing question paper PDF: ${file.name}...`);
+
+    try {
+      const data = await uploadPYQPDFAPI(file);
+      if (data.extractedQuestions && data.extractedQuestions.length > 0) {
+        setPastedQuestions(data.extractedQuestions.join('\n\n'));
+        setStatusMessage(`Extracted ${data.extractedQuestions.length} questions from ${file.name}. Review and map below.`);
+      } else {
+        setStatusMessage(`No numbered questions detected in ${file.name}. Please paste text manually.`);
+      }
+    } catch (err) {
+      setStatusMessage(`PDF Upload note: ${err.message}. You can also paste questions directly.`);
     } finally {
       setLoading(false);
     }
@@ -90,25 +101,15 @@ Return ONLY valid JSON:
     setLoading(true);
     setStatusMessage(null);
 
-    const systemPrompt = `Generate 3 exam-style questions for the topic "${topicToUse}" in subject "${currentSubject?.name || 'Computer Science'}".
-Difficulty: Medium. Style: university exam (mix of theory, derivation, and implementation).
-Return ONLY valid JSON:
-{
-  "questions": [
-    {
-      "question": "Question text...",
-      "marks": 10,
-      "year": 2025
-    }
-  ]
-}`;
-
     try {
-      const response = await callLLM(systemPrompt, `Generate questions for ${topicToUse}`);
-      const cleanJson = response.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      if (parsed.questions && Array.isArray(parsed.questions)) {
-        const mapped = parsed.questions.map(q => ({
+      const questionsList = await generateQuestionsAPI(
+        topicToUse,
+        currentSubject?.name || 'Computer Science',
+        'Medium',
+        3
+      );
+      if (questionsList && Array.isArray(questionsList)) {
+        const mapped = questionsList.map(q => ({
           question: q.question,
           topic: topicToUse,
           marks: q.marks || 5,
@@ -129,14 +130,19 @@ Return ONLY valid JSON:
 
   // 3. Load Community Pool
   const handleLoadCommunityPool = () => {
-    const communityQuestions = [
-      { question: "Derive time complexity of AVL insertion in the worst case scenario.", topic: "AVL Trees & Balance Rotations", marks: 7, year: 2023 },
-      { question: "Write code to detect a cycle in an undirected graph using BFS.", topic: "Graph Traversals (BFS & DFS)", marks: 10, year: 2023 },
-      { question: "Explain the pointer adjustment in doubly linked list deletion.", topic: "Singly & Doubly Linked Lists", marks: 5, year: 2022 },
-      { question: "Why is circular queue better than linear queue implemented on array?", topic: "Stacks & Circular Queues", marks: 5, year: 2021 }
-    ];
-    addBulkPYQs(currentSubject.id, communityQuestions);
-    setStatusMessage(`Loaded ${communityQuestions.length} verified community questions from IIITDM / Peer Pool!`);
+    const poolQuestions = getFromPool(collegeName, currentSubject?.name);
+    const topicNames = topics.map(t => t.name);
+
+    // Map pool questions
+    const mapped = poolQuestions.map((q, idx) => ({
+      question: q,
+      topic: topicNames[idx % topicNames.length] || topics[0]?.name,
+      marks: 7,
+      year: 2024
+    }));
+
+    addBulkPYQs(currentSubject.id, mapped);
+    setStatusMessage(`Loaded ${mapped.length} verified community questions from ${collegeName} Peer Pool!`);
   };
 
   return (
@@ -163,14 +169,14 @@ Return ONLY valid JSON:
             id: 'upload',
             title: '1. Upload / Paste PYQs',
             badge: 'Primary Path',
-            desc: 'Have papers from seniors or drive? Paste and let AI map them.',
+            desc: 'Have papers from seniors or drive? Upload PDF or paste text.',
             icon: UploadCloud
           },
           {
             id: 'community',
             title: '2. Community Pool',
-            badge: 'IIITDM / College Pool',
-            desc: 'Load curated peer-uploaded question archives.',
+            badge: 'IIITDM / Peer Pool',
+            desc: 'Access crowdsourced college question archives.',
             icon: Users
           },
           {
@@ -213,21 +219,34 @@ Return ONLY valid JSON:
       {/* Tier Input Area */}
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8 space-y-5">
         
-        {/* Tier 1: Paste Text / Upload */}
+        {/* Tier 1: Paste Text / Upload PDF */}
         {activeTier === 'upload' && (
           <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                Paste Past Exam Questions (or Transcripts)
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Paste Past Exam Questions (or Upload PDF)
               </label>
-              <textarea
-                rows={5}
-                value={pastedQuestions}
-                onChange={(e) => setPastedQuestions(e.target.value)}
-                placeholder="1. Explain the difference between singly and doubly linked lists with insertion cost. (5 marks)&#10;2. Perform AVL tree rotations for sequence: 10, 20, 30, 25, 28. (10 marks)..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500 leading-relaxed"
-              />
+
+              {/* Upload PDF input */}
+              <label className="cursor-pointer px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 text-xs font-semibold transition-colors flex items-center space-x-1.5 self-start sm:self-auto">
+                <UploadCloud className="w-4 h-4 text-indigo-400" />
+                <span>Upload Question Paper PDF</span>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
             </div>
+
+            <textarea
+              rows={5}
+              value={pastedQuestions}
+              onChange={(e) => setPastedQuestions(e.target.value)}
+              placeholder="1. Explain the difference between singly and doubly linked lists with insertion cost. (5 marks)&#10;2. Perform AVL tree rotations for sequence: 10, 20, 30, 25, 28. (10 marks)..."
+              className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500 leading-relaxed"
+            />
 
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs text-slate-500">
@@ -252,10 +271,21 @@ Return ONLY valid JSON:
         {/* Tier 2: Community Pool */}
         {activeTier === 'community' && (
           <div className="space-y-4">
+            <div className="flex items-center space-x-3 mb-2">
+              <label className="text-xs font-semibold uppercase text-slate-400">Your College / Campus:</label>
+              <input
+                type="text"
+                value={collegeName}
+                onChange={(e) => setCollegeName(e.target.value)}
+                placeholder="e.g. IIITDM"
+                className="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 font-bold"
+              />
+            </div>
+
             <div className="p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/20 flex items-start space-x-3">
               <Users className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
               <div className="text-xs text-indigo-200 leading-relaxed">
-                <strong className="text-white">College Peer Pool:</strong> Connects with crowdsourced question archives for <em>{currentSubject?.name || 'Computer Science'}</em>. 4 high-frequency exam questions ready to import.
+                <strong className="text-white">Community Question Pool:</strong> Crowdsourced questions uploaded by seniors and peers for <em>{currentSubject?.name || 'Computer Science'}</em> at {collegeName}.
               </div>
             </div>
 
