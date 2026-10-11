@@ -166,5 +166,79 @@ Unit 5: Hashing & Heaps - Hash tables, Collision resolution (Chaining, Linear Pr
       date: "2026-10-09",
       resolved: false
     }
+  ],
+  topicNotes: {
+    "AVL Trees & Balance Rotations": `# AVL Tree Balance & Invariant Rules
+
+### Core Invariant
+For every node $v$ in an AVL tree, the balance factor $BF(v)$ must satisfy:
+$$BF(v) = Height(LeftSubtree) - Height(RightSubtree) \\in \\{-1, 0, 1\\}$$
+
+### Rotation Decision Matrix
+| Insert Location | Imbalance Type | Rotation Sequence |
+| :--- | :--- | :--- |
+| Left subtree of Left child | **LL Case** | Single **Right Rotation** at node $z$ |
+| Right subtree of Right child | **RR Case** | Single **Left Rotation** at node $z$ |
+| Right subtree of Left child | **LR Case** | Double: Left on left child, then Right on $z$ |
+| Left subtree of Right child | **RL Case** | Double: Right on right child, then Left on $z$ |
+
+> ⚠️ **Common Exam Mistake:** For LR / RL rotations, the node that ends up at the root of the balanced subtree is the **grandchild** (middle key), NOT the child!
+
+### Height Bound Proof Intuition
+Minimum nodes in tree of height $h$:
+$$N(h) = N(h-1) + N(h-2) + 1$$
+This follows Fibonacci progression: $N(h) \\ge F_{h+2} - 1$, guaranteeing worst-case height $h < 1.44 \\log_2 N$.`,
+
+    "Singly & Doubly Linked Lists": `# Linked List Reversal & Invariants
+
+### 3-Pointer Reversal Invariant
+At the start of each iteration:
+- \`prev\` points to the already reversed prefix.
+- \`curr\` points to the node currently being processed.
+- \`next\` temporarily preserves the rest of the list.
+
+\`\`\`c
+Node* reverseList(Node* head) {
+    Node *prev = NULL, *curr = head, *nxt = NULL;
+    while (curr != NULL) {
+        nxt = curr->next;
+        curr->next = prev;
+        prev = curr;
+        curr = nxt;
+    }
+    return prev; // New head
+}
+\`\`\`
+
+> ⚠️ **Critical Trap:** If you forget \`curr->next = prev\` on the original head when \`prev == NULL\`, the initial head retains its link, producing an infinite cycle!`
+  },
+  studyActivity: {
+    "2026-09-28": { minutes: 90, questions: 4, sessions: 2 },
+    "2026-09-29": { minutes: 60, questions: 3, sessions: 1 },
+    "2026-09-30": { minutes: 120, questions: 7, sessions: 3 },
+    "2026-10-01": { minutes: 45, questions: 2, sessions: 1 },
+    "2026-10-02": { minutes: 80, questions: 5, sessions: 2 },
+    "2026-10-04": { minutes: 110, questions: 6, sessions: 2 },
+    "2026-10-05": { minutes: 90, questions: 4, sessions: 2 },
+    "2026-10-06": { minutes: 120, questions: 8, sessions: 3 },
+    "2026-10-07": { minutes: 75, questions: 5, sessions: 2 },
+    "2026-10-08": { minutes: 100, questions: 6, sessions: 2 },
+    "2026-10-09": { minutes: 130, questions: 9, sessions: 3 },
+    "2026-10-10": { minutes: 90, questions: 6, sessions: 2 },
+    "2026-10-11": { minutes: 115, questions: 7, sessions: 3 }
+  },
+  mockExamHistory: [
+    {
+      id: "mock_01",
+      subjectId: "cs-dsa-101",
+      subjectName: "Data Structures & Algorithms",
+      date: "2026-10-09",
+      score: 39,
+      totalMarks: 50,
+      percentage: 78,
+      grade: "A",
+      durationMins: 52,
+      summary: "Strong performance on Section A short answers. Lost marks on Section B AVL double rotation step-by-step trace."
+    }
   ]
 };

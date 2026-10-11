@@ -14,9 +14,13 @@ import {
   Zap,
   RotateCcw,
   Users,
-  Compass
+  Compass,
+  Award,
+  FileEdit,
+  Printer
 } from 'lucide-react';
 import KnowledgeMatrix from '../components/KnowledgeMatrix';
+import StudyStreakHeatmap from '../components/StudyStreakHeatmap';
 
 export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic }) {
   const { state, calculatePriorityQueue, resolveMistake } = store;
@@ -157,6 +161,9 @@ export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic })
 
       </div>
 
+      {/* Study Streak & Activity Heatmap */}
+      <StudyStreakHeatmap store={store} />
+
       {/* Recurring Mistake Pattern Alert Box */}
       {mistakes.length > 0 && (
         <div className="bg-amber-950/20 border border-amber-500/30 rounded-2xl p-5 relative overflow-hidden">
@@ -222,6 +229,27 @@ export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic })
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={() => setActiveTab('mock')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all"
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>Mock Exam</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('cheatsheet')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors"
+            >
+              <Printer className="w-3.5 h-3.5 text-amber-400" />
+              <span>Formula Sheet</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('notes')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors"
+            >
+              <FileEdit className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Notes Pad</span>
+            </button>
+            <button
               onClick={() => setActiveTab('flashcards')}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-600/90 hover:bg-purple-600 text-white text-xs font-semibold shadow-md shadow-purple-600/20 transition-all"
             >
@@ -229,24 +257,17 @@ export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic })
               <span>Flashcards</span>
             </button>
             <button
-              onClick={() => setActiveTab('community')}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors"
-            >
-              <Users className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Campus Archive</span>
-            </button>
-            <button
               onClick={() => setActiveTab('resources')}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors"
             >
               <Compass className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Resource Vault</span>
+              <span>Resources</span>
             </button>
             <button
               onClick={() => setActiveTab('planner')}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors"
             >
-              <Target className="w-3.5 h-3.5" />
+              <Target className="w-3.5 h-3.5 text-indigo-400" />
               <span>Schedule</span>
             </button>
           </div>

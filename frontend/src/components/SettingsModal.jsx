@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, Key, Cpu, Zap, Info, ShieldCheck } from 'lucide-react';
+import { X, Check, Key, Cpu, Zap, Info, ShieldCheck, Download, Upload, Database } from 'lucide-react';
 import { callLLM } from '../lib/llm';
 
 export default function SettingsModal({ isOpen, onClose, store }) {
@@ -10,6 +10,27 @@ export default function SettingsModal({ isOpen, onClose, store }) {
   const [ollamaEndpoint, setOllamaEndpoint] = useState(state.llm_config?.ollamaEndpoint || 'http://localhost:11434');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  const [backupMessage, setBackupMessage] = useState(null);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result;
+        const res = store.importStateJSON(text);
+        if (res.success) {
+          setBackupMessage({ success: true, text: res.message });
+        } else {
+          setBackupMessage({ success: false, text: res.error });
+        }
+      } catch (err) {
+        setBackupMessage({ success: false, text: "Failed to read backup file." });
+      }
+    };
+    reader.readAsText(file);
+  };
 
   if (!isOpen) return null;
 
@@ -188,6 +209,49 @@ export default function SettingsModal({ isOpen, onClose, store }) {
                   : 'bg-rose-950/30 border-rose-500/30 text-rose-300'
               }`}>
                 {testResult.message}
+              </div>
+            )}
+          </div>
+
+          {/* Backup & Cross-Device Data Sync Section */}
+          <div className="pt-3 border-t border-slate-800 space-y-3">
+            <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <Database className="w-4 h-4 text-indigo-400" />
+              <span>Data Backup & Safety (JSON)</span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Never lose your mistake logs, custom subjects, or topic notes. Export a single backup file or restore it on any browser.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={store.exportStateJSON}
+                className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center justify-center space-x-2 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Export Brain (.json)</span>
+              </button>
+
+              <label className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center justify-center space-x-2 transition-colors cursor-pointer text-center">
+                <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Restore Backup</span>
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                />
+              </label>
+            </div>
+
+            {backupMessage && (
+              <div className={`p-2.5 rounded-xl text-xs border ${
+                backupMessage.success 
+                  ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300' 
+                  : 'bg-rose-950/30 border-rose-500/30 text-rose-300'
+              }`}>
+                {backupMessage.text}
               </div>
             )}
           </div>

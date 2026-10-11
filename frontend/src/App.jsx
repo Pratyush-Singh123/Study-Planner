@@ -12,6 +12,9 @@ import MistakeLogView from './pages/MistakeLogView';
 import FlashcardsView from './pages/FlashcardsView';
 import CommunityExplorerView from './pages/CommunityExplorerView';
 import ResourceVaultView from './pages/ResourceVaultView';
+import TopicNotesView from './pages/TopicNotesView';
+import MockExamView from './pages/MockExamView';
+import CheatSheetView from './pages/CheatSheetView';
 import { useStore } from './store/useStore';
 import { Sparkles, Info } from 'lucide-react';
 
@@ -89,6 +92,28 @@ export default function App() {
             store={store}
             setActiveTab={setActiveTab}
             setSelectedQuizTopic={setSelectedQuizTopic}
+          />
+        )}
+
+        {activeTab === 'notes' && (
+          <TopicNotesView
+            store={store}
+            setActiveTab={setActiveTab}
+            setSelectedQuizTopic={setSelectedQuizTopic}
+          />
+        )}
+
+        {activeTab === 'mock' && (
+          <MockExamView
+            store={store}
+            setActiveTab={setActiveTab}
+          />
+        )}
+
+        {activeTab === 'cheatsheet' && (
+          <CheatSheetView
+            store={store}
+            setActiveTab={setActiveTab}
           />
         )}
 

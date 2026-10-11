@@ -13,7 +13,11 @@ import {
   Layers,
   Brain,
   Users,
-  Compass
+  Compass,
+  Award,
+  Printer,
+  FileEdit,
+  Download
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -169,6 +173,42 @@ export default function Navbar({
           </button>
 
           <button
+            onClick={() => setActiveTab('mock')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
+              activeTab === 'mock'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            <span>Mock Exam</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('notes')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
+              activeTab === 'notes'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <FileEdit className="w-4 h-4" />
+            <span>Notes</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('cheatsheet')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
+              activeTab === 'cheatsheet'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Printer className="w-4 h-4" />
+            <span>Formula Sheet</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('mistakes')}
             className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
               activeTab === 'mistakes'
@@ -194,21 +234,29 @@ export default function Navbar({
         </nav>
 
         {/* Right Action Tools */}
-        <div className="flex items-center space-x-2.5">
+        <div className="flex items-center space-x-2">
           {days !== null && (
-            <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium">
+            <div className="hidden xl:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium">
               <Clock className="w-3.5 h-3.5" />
               <span>Exam in {days} {days === 1 ? 'day' : 'days'}</span>
             </div>
           )}
 
           <button
+            onClick={store.exportStateJSON}
+            title="Download Full Study Brain Backup (.json)"
+            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition-colors shadow-sm"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+
+          <button
             onClick={loadDemoData}
             title="Reload CS201 Demo Dataset"
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-colors shadow-sm"
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-colors shadow-sm"
           >
             <RotateCcw className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden sm:inline">Load Demo Data</span>
+            <span className="hidden sm:inline">Demo</span>
           </button>
 
           <button
@@ -229,7 +277,9 @@ export default function Navbar({
           { id: 'syllabus', label: 'Syllabus', icon: BookOpen },
           { id: 'pyq', label: 'PYQs', icon: FileText },
           { id: 'community', label: 'Community', icon: Users },
-          { id: 'flashcards', label: 'Flashcards', icon: Brain },
+          { id: 'mock', label: 'Mock Exam', icon: Award },
+          { id: 'notes', label: 'Notes Pad', icon: FileEdit },
+          { id: 'cheatsheet', label: 'Formula Sheet', icon: Printer },
           { id: 'resources', label: 'Resources', icon: Compass },
           { id: 'planner', label: 'Schedule', icon: Clock },
           { id: 'quiz', label: 'Quiz', icon: CheckCircle2 },

@@ -6,7 +6,16 @@ const STORAGE_KEY = 'gapfill_state_v1';
 export function getInitialState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEMO_DATASET,
+        ...parsed,
+        topicNotes: parsed.topicNotes || DEMO_DATASET.topicNotes || {},
+        studyActivity: parsed.studyActivity || DEMO_DATASET.studyActivity || {},
+        mockExamHistory: parsed.mockExamHistory || DEMO_DATASET.mockExamHistory || []
+      };
+    }
   } catch (e) {
     console.error('Failed to load local storage state', e);
   }
@@ -45,7 +54,10 @@ export function useStore() {
       topics: {},
       pyqs: {},
       gapScores: {},
-      mistakeLog: []
+      mistakeLog: [],
+      topicNotes: {},
+      studyActivity: {},
+      mockExamHistory: []
     };
     setState(fresh);
   };
@@ -257,6 +269,66 @@ export function useStore() {
     }).sort((a, b) => b.priorityScore - a.priorityScore);
   };
 
+  const saveTopicNote = (topicName, content) => {
+    setState(prev => ({
+      ...prev,
+      topicNotes: {
+        ...(prev.topicNotes || {}),
+        [topicName]: content
+      }
+    }));
+  };
+
+  const logStudyActivity = (minutes = 30, questions = 1) => {
+    const today = new Date().toISOString().split('T')[0];
+    setState(prev => {
+      const current = (prev.studyActivity && prev.studyActivity[today]) || { minutes: 0, questions: 0, sessions: 0 };
+      return {
+        ...prev,
+        studyActivity: {
+          ...(prev.studyActivity || {}),
+          [today]: {
+            minutes: current.minutes + minutes,
+            questions: current.questions + questions,
+            sessions: current.sessions + 1
+          }
+        }
+      };
+    });
+  };
+
+  const recordMockExamResult = (examRecord) => {
+    setState(prev => ({
+      ...prev,
+      mockExamHistory: [examRecord, ...(prev.mockExamHistory || [])]
+    }));
+    logStudyActivity(examRecord.durationMins || 45, examRecord.questionResults?.length || 5);
+  };
+
+  const exportStateJSON = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+    const downloadAnchor = document.createElement('a');
+    const today = new Date().toISOString().split('T')[0];
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `GapFill_Study_Brain_${today}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const importStateJSON = (jsonString) => {
+    try {
+      const parsed = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+      if (!parsed || !parsed.subjects) {
+        throw new Error("Invalid GapFill backup file format: missing subjects.");
+      }
+      setState(parsed);
+      return { success: true, message: `Successfully restored ${parsed.subjects.length} subjects & study data!` };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
   return {
     state,
     loadDemoData,
@@ -272,6 +344,11 @@ export function useStore() {
     recordQuizResult,
     logMistake,
     resolveMistake,
-    calculatePriorityQueue
+    calculatePriorityQueue,
+    saveTopicNote,
+    logStudyActivity,
+    recordMockExamResult,
+    exportStateJSON,
+    importStateJSON
   };
 }
