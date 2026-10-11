@@ -58,13 +58,17 @@ def register():
 
     otp_code, sent, msg = create_and_send_otp(email, purpose="registration")
 
-    return jsonify({
+    res_data = {
         "success": True,
-        "message": f"Verification code sent to {email}. Please enter it to activate your account.",
+        "message": f"Real verification code dispatched to {email}! Please check your email inbox." if sent else f"Verification code generated ({msg}).",
         "email": email,
         "requires_otp": True,
-        "dev_otp": otp_code  # Provided for frictionless development / offline testing
-    }), 201
+        "email_delivered": sent
+    }
+    if not sent:
+        res_data["dev_otp"] = otp_code
+
+    return jsonify(res_data), 201
 
 
 @auth_bp.route("/verify-otp", methods=["POST"])
@@ -119,12 +123,16 @@ def resend_otp():
 
     otp_code, sent, msg = create_and_send_otp(email, purpose="registration")
 
-    return jsonify({
+    res_data = {
         "success": True,
-        "message": f"New verification code sent to {email}.",
+        "message": f"Fresh verification code dispatched to {email}! Please check your inbox." if sent else f"New code generated ({msg}).",
         "email": email,
-        "dev_otp": otp_code
-    }), 200
+        "email_delivered": sent
+    }
+    if not sent:
+        res_data["dev_otp"] = otp_code
+
+    return jsonify(res_data), 200
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -143,14 +151,17 @@ def login():
         return jsonify({"error": "Invalid email or password."}), 401
 
     if not user.is_verified:
-        otp_code, _, _ = create_and_send_otp(email, purpose="registration")
-        return jsonify({
+        otp_code, sent, msg = create_and_send_otp(email, purpose="registration")
+        res_data = {
             "success": False,
             "requires_otp": True,
             "email": email,
-            "message": "Your email address is not yet verified. A verification code has been sent.",
-            "dev_otp": otp_code
-        }), 403
+            "email_delivered": sent,
+            "message": f"Your email address is not yet verified. A verification code has been dispatched to {email}." if sent else "Your email address is not yet verified.",
+        }
+        if not sent:
+            res_data["dev_otp"] = otp_code
+        return jsonify(res_data), 403
 
     token = generate_jwt_token(user.id, user.email)
 

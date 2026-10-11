@@ -6,11 +6,14 @@ Runs on any Python 3 installation on macOS, Linux, or Windows.
 """
 import os
 import sys
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
+# Auto re-execute with backend/venv/bin/python if running outside dedicated virtualenv
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+VENV_PYTHON = os.path.join(BACKEND_DIR, "venv", "bin", "python")
+if os.path.exists(VENV_PYTHON) and sys.executable != os.path.abspath(VENV_PYTHON):
+    os.execv(VENV_PYTHON, [VENV_PYTHON] + sys.argv)
+
+import smtplib
 
 def load_local_env():
     """Reads backend/.env if it exists without needing python-dotenv"""

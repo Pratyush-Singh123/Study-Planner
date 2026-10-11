@@ -3,12 +3,23 @@
   "version": "1.0.0",
   "description": "GapFill - Intelligent Knowledge Gap Engine and Study Planner for Axion Hackathon",
   "scripts": {
-    "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
+    "dev": "concurrently -k -n \"backend,frontend\" -c \"cyan,magenta\" \"python3 backend/app.py\" \"npm --prefix frontend run dev\"",
+    "start": "concurrently -k -n \"backend,frontend\" -c \"cyan,magenta\" \"python3 backend/app.py\" \"npm --prefix frontend run dev\"",
     "backend": "python3 backend/app.py",
+    "frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
     "deploy": "python3 scripts/deploy_pages.py"
   },
-  "keywords": ["study-planner", "ai", "llm", "knowledge-gaps", "axion-hackathon"],
+  "keywords": [
+    "study-planner",
+    "ai",
+    "llm",
+    "knowledge-gaps",
+    "axion-hackathon"
+  ],
   "author": "Pratyush Singh",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
 }

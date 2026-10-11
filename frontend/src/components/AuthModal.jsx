@@ -27,6 +27,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [otp, setOtp] = useState('');
   
   const [devOtp, setDevOtp] = useState(null);
+  const [emailDelivered, setEmailDelivered] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -54,10 +55,18 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         full_name: fullName,
         college
       });
+      setEmailDelivered(Boolean(res.email_delivered));
       setSuccessMsg(res.message || `Verification code sent to ${email}`);
       if (res.dev_otp) {
         setDevOtp(res.dev_otp);
-        setOtp(res.dev_otp); // Auto-fill for zero-friction verification
+        if (!res.email_delivered) {
+          setOtp(res.dev_otp);
+        } else {
+          setOtp('');
+        }
+      } else {
+        setDevOtp(null);
+        setOtp('');
       }
       setMode('otp');
       setResendCooldown(30);
@@ -75,10 +84,18 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     try {
       const res = await loginAPI(email, password);
       if (res.requires_otp) {
+        setEmailDelivered(Boolean(res.email_delivered));
         setSuccessMsg(res.message || `Please verify the code sent to ${email}`);
         if (res.dev_otp) {
           setDevOtp(res.dev_otp);
-          setOtp(res.dev_otp);
+          if (!res.email_delivered) {
+            setOtp(res.dev_otp);
+          } else {
+            setOtp('');
+          }
+        } else {
+          setDevOtp(null);
+          setOtp('');
         }
         setMode('otp');
         setResendCooldown(30);
@@ -120,10 +137,15 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     setLoading(true);
     try {
       const res = await resendOtpAPI(email);
+      setEmailDelivered(Boolean(res.email_delivered));
       setSuccessMsg(res.message || `New code sent to ${email}`);
       if (res.dev_otp) {
         setDevOtp(res.dev_otp);
-        setOtp(res.dev_otp);
+        if (!res.email_delivered) {
+          setOtp(res.dev_otp);
+        }
+      } else {
+        setDevOtp(null);
       }
       setResendCooldown(30);
     } catch (err) {
@@ -337,51 +359,85 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         {mode === 'otp' && (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             
-            {/* Realistic Simulated Email Inbox Card */}
-            <div className="bg-gradient-to-br from-indigo-950/70 via-slate-950 to-slate-950 p-4 rounded-2xl border border-indigo-500/30 shadow-inner">
-              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-800/80">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider">
-                    Incoming Email Inbox
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-400">Just now</span>
-              </div>
-
-              <p className="text-xs text-slate-300">
-                To: <span className="font-mono text-indigo-300 font-semibold">{email}</span>
-              </p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                From: <span className="text-slate-300">GapFill Security &lt;security@gapfill.edu&gt;</span>
-              </p>
-
-              {devOtp && (
-                <div className="mt-3 p-2.5 bg-slate-900/90 rounded-xl border border-indigo-500/40 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Your 6-Digit Code</span>
-                    <span className="font-mono text-xl font-extrabold text-sky-400 tracking-widest">{devOtp}</span>
+            {/* Real Email Dispatched Banner OR Local Fallback */}
+            {emailDelivered ? (
+              <div className="bg-gradient-to-br from-indigo-950/70 via-slate-950 to-slate-950 p-4 rounded-2xl border border-indigo-500/40 shadow-inner">
+                <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800/80">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5" /> Real Email Dispatched
+                    </span>
                   </div>
-                  <div className="flex items-center space-x-1.5">
+                  <span className="text-[10px] text-slate-400">Delivered</span>
+                </div>
+
+                <p className="text-xs text-slate-300">
+                  A real verification email with your 6-digit OTP has been sent to:
+                </p>
+                <div className="mt-1.5 font-mono text-sm text-sky-400 font-bold bg-slate-900/90 px-3 py-2 rounded-xl border border-sky-500/30">
+                  {email}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
+                  📬 Please check your inbox (and <span className="text-amber-300 font-medium">Spam/Junk folder</span> if you don't see it within a few seconds), then enter the code below.
+                </p>
+
+                {devOtp && (
+                  <div className="mt-3 p-2 bg-slate-900/80 rounded-lg border border-slate-800 text-[11px] flex items-center justify-between">
+                    <span className="text-slate-400">Backup code: <code className="text-amber-400 font-mono font-bold">{devOtp}</code></span>
                     <button
                       type="button"
                       onClick={() => setOtp(devOtp)}
-                      className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-all cursor-pointer"
+                      className="text-indigo-400 hover:text-indigo-300 text-[11px] font-semibold underline cursor-pointer"
                     >
-                      Autofill
-                    </button>
-                    <button
-                      type="button"
-                      onClick={copyOtpToClipboard}
-                      title="Copy code"
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all cursor-pointer"
-                    >
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      Use code
                     </button>
                   </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gradient-to-br from-indigo-950/70 via-slate-950 to-slate-950 p-4 rounded-2xl border border-indigo-500/30 shadow-inner">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-800/80">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                    <span className="text-[11px] font-semibold text-amber-300 uppercase tracking-wider">
+                      Verification Code Generated
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">Just now</span>
                 </div>
-              )}
-            </div>
+
+                <p className="text-xs text-slate-300">
+                  To: <span className="font-mono text-indigo-300 font-semibold">{email}</span>
+                </p>
+
+                {devOtp && (
+                  <div className="mt-3 p-2.5 bg-slate-900/90 rounded-xl border border-indigo-500/40 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Your 6-Digit Code</span>
+                      <span className="font-mono text-xl font-extrabold text-sky-400 tracking-widest">{devOtp}</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setOtp(devOtp)}
+                        className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-all cursor-pointer"
+                      >
+                        Autofill
+                      </button>
+                      <button
+                        type="button"
+                        onClick={copyOtpToClipboard}
+                        title="Copy code"
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all cursor-pointer"
+                      >
+                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* OTP Code Input */}
             <div>

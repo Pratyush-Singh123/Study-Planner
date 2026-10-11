@@ -1,9 +1,25 @@
 import os
-from dotenv import load_dotenv
+import sys
+
+# Auto re-execute with backend/venv/bin/python if running outside dedicated virtualenv
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+VENV_PYTHON = os.path.join(BACKEND_DIR, "venv", "bin", "python")
+if os.path.exists(VENV_PYTHON) and sys.executable != os.path.abspath(VENV_PYTHON):
+    os.execv(VENV_PYTHON, [VENV_PYTHON] + sys.argv)
 
 # Load environment variables from backend/.env explicitly
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(BACKEND_DIR, '.env'))
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(BACKEND_DIR, '.env'))
+except ImportError:
+    env_file = os.path.join(BACKEND_DIR, '.env')
+    if os.path.exists(env_file):
+        with open(env_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 from flask import Flask, jsonify
 from flask_cors import CORS

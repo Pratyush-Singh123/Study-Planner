@@ -267,7 +267,7 @@ function virtualResendOtp(email) {
 export async function registerAPI(payload) {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 20000); // 20s for full Gmail SMTP TLS delivery
 
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
@@ -289,7 +289,7 @@ export async function registerAPI(payload) {
     if (err.message && !err.message.includes('fetch') && !err.message.includes('Unexpected') && !err.message.includes('aborted')) {
       throw err;
     }
-    console.info('Backend unreachable, using Client Virtual Database engine for registration.');
+    console.info('Backend unreachable, using Client Virtual Database engine for registration.', err);
   }
 
   // Fallback to Virtual Database
@@ -299,7 +299,7 @@ export async function registerAPI(payload) {
 export async function verifyOtpAPI(email, otp) {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     const res = await fetch(`${API_BASE}/auth/verify-otp`, {
       method: 'POST',
@@ -333,7 +333,7 @@ export async function verifyOtpAPI(email, otp) {
 export async function resendOtpAPI(email) {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 20000);
 
     const res = await fetch(`${API_BASE}/auth/resend-otp`, {
       method: 'POST',
@@ -361,7 +361,7 @@ export async function resendOtpAPI(email) {
 export async function loginAPI(email, password) {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 20000);
 
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
