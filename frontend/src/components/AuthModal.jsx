@@ -12,7 +12,9 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Copy,
+  Check
 } from 'lucide-react';
 import { registerAPI, verifyOtpAPI, loginAPI, resendOtpAPI } from '../lib/auth';
 
@@ -25,6 +27,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [otp, setOtp] = useState('');
   
   const [devOtp, setDevOtp] = useState(null);
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
@@ -51,12 +54,15 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         full_name: fullName,
         college
       });
-      setSuccessMsg(res.message);
-      if (res.dev_otp) setDevOtp(res.dev_otp);
+      setSuccessMsg(res.message || `Verification code sent to ${email}`);
+      if (res.dev_otp) {
+        setDevOtp(res.dev_otp);
+        setOtp(res.dev_otp); // Auto-fill for zero-friction verification
+      }
       setMode('otp');
       setResendCooldown(30);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -69,8 +75,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     try {
       const res = await loginAPI(email, password);
       if (res.requires_otp) {
-        setSuccessMsg(res.message);
-        if (res.dev_otp) setDevOtp(res.dev_otp);
+        setSuccessMsg(res.message || `Please verify the code sent to ${email}`);
+        if (res.dev_otp) {
+          setDevOtp(res.dev_otp);
+          setOtp(res.dev_otp);
+        }
         setMode('otp');
         setResendCooldown(30);
       } else if (res.token) {
@@ -78,10 +87,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         setTimeout(() => {
           onAuthSuccess(res.user, res.token);
           onClose();
-        }, 500);
+        }, 400);
       }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -93,13 +102,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     setLoading(true);
     try {
       const res = await verifyOtpAPI(email, otp);
-      setSuccessMsg("Account verified! Logging you in...");
+      setSuccessMsg("Account verified! Welcome to GapFill.");
       setTimeout(() => {
         onAuthSuccess(res.user, res.token);
         onClose();
-      }, 600);
+      }, 500);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Verification failed. Please check the code.');
     } finally {
       setLoading(false);
     }
@@ -111,30 +120,40 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     setLoading(true);
     try {
       const res = await resendOtpAPI(email);
-      setSuccessMsg(res.message);
-      if (res.dev_otp) setDevOtp(res.dev_otp);
+      setSuccessMsg(res.message || `New code sent to ${email}`);
+      if (res.dev_otp) {
+        setDevOtp(res.dev_otp);
+        setOtp(res.dev_otp);
+      }
       setResendCooldown(30);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to resend code.');
     } finally {
       setLoading(false);
     }
   };
 
+  const copyOtpToClipboard = () => {
+    if (!devOtp) return;
+    navigator.clipboard.writeText(devOtp);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden p-6 text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 text-slate-100">
         
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Modal Header */}
-        <div className="flex items-center space-x-3 mb-6">
+        {/* Modal Top Header */}
+        <div className="flex items-center space-x-3 mb-5">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/20">
             <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-indigo-400" />
@@ -142,18 +161,44 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           </div>
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-1.5">
-              {mode === 'otp' ? 'Verify Your Email' : mode === 'register' ? 'Create Account' : 'Student Sign In'}
+              {mode === 'otp' ? 'Email OTP Verification' : 'Student Portal'}
               <Sparkles className="w-4 h-4 text-amber-400" />
             </h3>
             <p className="text-xs text-slate-400">
               {mode === 'otp' 
-                ? `Enter the 6-digit code sent to ${email}`
-                : mode === 'register'
-                ? 'Join GapFill with your personalized cloud database'
-                : 'Access your persistent study streak, gaps & mistake history'}
+                ? `6-digit code delivered for ${email}`
+                : 'Secure cloud database with individual student memory'}
             </p>
           </div>
         </div>
+
+        {/* Top Tab Switcher (when not in OTP mode) */}
+        {mode !== 'otp' && (
+          <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800 mb-5">
+            <button
+              type="button"
+              onClick={() => { setMode('login'); setError(null); }}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                mode === 'login'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('register'); setError(null); }}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                mode === 'register'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+        )}
 
         {/* Status Alerts */}
         {error && (
@@ -170,20 +215,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           </div>
         )}
 
-        {/* Development Mode OTP Helper Pill */}
-        {devOtp && mode === 'otp' && (
-          <div 
-            onClick={() => setOtp(devOtp)}
-            className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between cursor-pointer hover:bg-amber-500/20 transition-all shadow-sm"
-          >
-            <div className="flex items-center space-x-2">
-              <KeyRound className="w-4 h-4 text-amber-400" />
-              <span>Dev OTP: <strong className="font-mono text-sm tracking-wider text-white">{devOtp}</strong></span>
-            </div>
-            <span className="text-[11px] underline font-semibold">Click to Autofill</span>
-          </div>
-        )}
-
         {/* MODE: LOGIN */}
         {mode === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4">
@@ -197,7 +228,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. cs25i1064@iiitdm.ac.in"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                 />
               </div>
             </div>
@@ -212,7 +243,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                 />
               </div>
             </div>
@@ -222,25 +253,15 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               disabled={loading}
               className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold text-sm shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50 cursor-pointer"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Sign In</span>}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Sign In to Cloud Database</span>}
               {!loading && <ArrowRight className="w-4 h-4" />}
             </button>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => { setMode('register'); setError(null); }}
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                Don't have an account? <strong className="underline">Create one</strong>
-              </button>
-            </div>
           </form>
         )}
 
         {/* MODE: REGISTER */}
         {mode === 'register' && (
-          <form onSubmit={handleRegister} className="space-y-3.5">
+          <form onSubmit={handleRegister} className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name</label>
               <div className="relative">
@@ -309,34 +330,63 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Send Verification Code</span>}
               {!loading && <ArrowRight className="w-4 h-4" />}
             </button>
-
-            <div className="text-center pt-1">
-              <button
-                type="button"
-                onClick={() => { setMode('login'); setError(null); }}
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                Already registered? <strong className="underline">Sign in</strong>
-              </button>
-            </div>
           </form>
         )}
 
         {/* MODE: OTP VERIFICATION */}
         {mode === 'otp' && (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800/80 text-center">
-              <p className="text-xs text-slate-400 mb-2">
-                We sent a 6-digit confirmation code to:
+            
+            {/* Realistic Simulated Email Inbox Card */}
+            <div className="bg-gradient-to-br from-indigo-950/70 via-slate-950 to-slate-950 p-4 rounded-2xl border border-indigo-500/30 shadow-inner">
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-800/80">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider">
+                    Incoming Email Inbox
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400">Just now</span>
+              </div>
+
+              <p className="text-xs text-slate-300">
+                To: <span className="font-mono text-indigo-300 font-semibold">{email}</span>
               </p>
-              <p className="font-semibold text-sm text-indigo-300 font-mono">
-                {email}
+              <p className="text-xs text-slate-400 mt-0.5">
+                From: <span className="text-slate-300">GapFill Security &lt;security@gapfill.edu&gt;</span>
               </p>
+
+              {devOtp && (
+                <div className="mt-3 p-2.5 bg-slate-900/90 rounded-xl border border-indigo-500/40 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Your 6-Digit Code</span>
+                    <span className="font-mono text-xl font-extrabold text-sky-400 tracking-widest">{devOtp}</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setOtp(devOtp)}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-all cursor-pointer"
+                    >
+                      Autofill
+                    </button>
+                    <button
+                      type="button"
+                      onClick={copyOtpToClipboard}
+                      title="Copy code"
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all cursor-pointer"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* OTP Code Input */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5 text-center">
-                Enter 6-Digit Code
+                Enter Verification Code
               </label>
               <input
                 type="text"
@@ -346,14 +396,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                 placeholder="123456"
                 autoFocus
-                className="w-full bg-slate-950 border border-indigo-500/40 rounded-xl py-3 text-center text-2xl font-bold font-mono tracking-[0.4em] text-sky-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                className="w-full bg-slate-950 border border-indigo-500/50 rounded-2xl py-3 text-center text-3xl font-extrabold font-mono tracking-[0.4em] text-sky-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading || otp.length < 6}
-              className="w-full flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-semibold text-sm shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer"
+              className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-semibold text-sm shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Verify & Access Account</span>}
               {!loading && <CheckCircle2 className="w-4 h-4" />}
@@ -363,7 +413,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               <button
                 type="button"
                 onClick={() => { setMode('login'); setError(null); }}
-                className="text-slate-400 hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-200 cursor-pointer"
               >
                 ← Back to Login
               </button>
@@ -372,11 +422,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                 type="button"
                 disabled={resendCooldown > 0 || loading}
                 onClick={handleResendOtp}
-                className="flex items-center space-x-1 text-indigo-400 hover:text-indigo-300 disabled:text-slate-600 transition-colors"
+                className="flex items-center space-x-1 text-indigo-400 hover:text-indigo-300 disabled:text-slate-600 transition-colors cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>
-                  {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
                 </span>
               </button>
             </div>
