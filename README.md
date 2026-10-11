@@ -6,6 +6,13 @@ Built for the **Axion Hackathon**.
 
 ---
 
+## 🌐 Live Website & Demo
+
+- **Live Public Website:** [https://pratyush-singh123.github.io/Study-Planner/](https://pratyush-singh123.github.io/Study-Planner/)
+- **GitHub Repository:** [https://github.com/Pratyush-Singh123/Study-Planner](https://github.com/Pratyush-Singh123/Study-Planner)
+
+---
+
 ## 📌 Problem Statement
 
 Students know they need to study, but they don't know:
@@ -23,7 +30,7 @@ Students know they need to study, but they don't know:
 
 ## 🚀 Key Features
 
-- **Universal LLM Abstraction Layer:** Seamlessly connect Anthropic Claude, OpenAI GPT, Google Gemini, or Local Ollama.
+- **Universal LLM Abstraction Layer:** Seamlessly connect Anthropic Claude, OpenAI GPT, Google Gemini, Local Ollama, or use zero-config Demo Mode.
 - **AI Syllabus Extractor:** Ingests raw syllabus text or PDFs and extracts structured topic trees, difficulty levels, prerequisites, and estimated hours.
 - **PYQ Engine & Topic Frequency Mapping:** Maps university past exam questions to topics, ranking exam weightage.
 - **Adaptive Quiz & Conceptual Mistake Log:** Evaluates answers not just for correctness, but specifically isolates the conceptual misunderstanding.
@@ -48,24 +55,41 @@ gapfill/
 │   └── public/
 ├── backend/              # Flask / Python API
 │   ├── app.py            # API entry point
-│   ├── routes/           # Syllabus, PYQ, Quiz, Chat routes
+│   ├── routes/           # Syllabus, PYQ, Quiz, Chat, Resource routes
 │   ├── prompts/          # Structured system prompts
 │   └── utils/
+│       ├── llm_caller.py # Multi-provider proxy
 │       └── pdf_parser.py # PDF extraction engine
 └── README.md
 ```
 
 ---
 
-## ⏱️ Execution Roadmap
+## 🚢 Deployment Options
 
-- [x] **Phase 0:** Setup, Git repo, and project structure
-- [ ] **Phase 1:** LLM Abstraction Layer (`llm.js` / API)
-- [ ] **Phase 2:** Onboarding Flow (4 linear setup screens)
-- [ ] **Phase 3:** Syllabus Parser & Interactive Topic Review
-- [ ] **Phase 4:** PYQ Engine & Exam Weightage Mapper
-- [ ] **Phase 5:** Quiz Flow, Gap Tracker & Mistake Log
-- [ ] **Phase 6:** Priority Queue Dashboard & Progress Rings
-- [ ] **Phase 7:** Context-Aware Study Coach (Chatbot)
-- [ ] **Phase 8:** "I'm Stuck" Resource Recommender
-- [ ] **Phase 9:** Polish, Demo Mode & Pitch Rehearsal
+### Option 1: GitHub Pages (Live)
+The production bundle is hosted on the `gh-pages` branch:
+👉 **[https://pratyush-singh123.github.io/Study-Planner/](https://pratyush-singh123.github.io/Study-Planner/)**
+
+To enable in GitHub:
+1. Go to repository **Settings** $\rightarrow$ **Pages**
+2. Under **Build and deployment**, select **Deploy from a branch**
+3. Choose branch **`gh-pages`** and folder **`/ (root)`** $\rightarrow$ **Save**
+
+To redeploy after changes:
+```bash
+npm run deploy
+```
+
+### Option 2: Vercel (1-Click Deployment)
+Click to deploy on Vercel:
+👉 [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https://github.com/Pratyush-Singh123/Study-Planner)
+
+### Option 3: Local Development
+```bash
+# Run Frontend
+npm run dev
+
+# Run Backend
+backend/venv/bin/python backend/app.py
+```

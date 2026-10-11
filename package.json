@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
-    "backend": "python3 backend/app.py"
+    "backend": "python3 backend/app.py",
+    "deploy": "python3 scripts/deploy_pages.py"
   },
   "keywords": ["study-planner", "ai", "llm", "knowledge-gaps", "axion-hackathon"],
   "author": "Pratyush Singh",
