@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Zap,
   RotateCcw,
-  Users
+  Users,
+  Compass
 } from 'lucide-react';
 import KnowledgeMatrix from '../components/KnowledgeMatrix';
 
@@ -235,6 +236,13 @@ export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic })
               <span>Campus Archive</span>
             </button>
             <button
+              onClick={() => setActiveTab('resources')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-colors"
+            >
+              <Compass className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Resource Vault</span>
+            </button>
+            <button
               onClick={() => setActiveTab('planner')}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all"
             >
@@ -325,6 +333,14 @@ export default function Dashboard({ store, setActiveTab, setSelectedQuizTopic })
                     >
                       <Brain className="w-3.5 h-3.5" />
                       <span>Diagnostic Quiz</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('resources')}
+                      className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                      title="Explore curated visualizers & study resources for this topic"
+                    >
+                      <Compass className="w-4 h-4 text-emerald-400" />
                     </button>
 
                     <button

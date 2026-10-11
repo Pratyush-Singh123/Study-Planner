@@ -11,6 +11,7 @@ import ChatbotView from './pages/ChatbotView';
 import MistakeLogView from './pages/MistakeLogView';
 import FlashcardsView from './pages/FlashcardsView';
 import CommunityExplorerView from './pages/CommunityExplorerView';
+import ResourceVaultView from './pages/ResourceVaultView';
 import { useStore } from './store/useStore';
 import { Sparkles, Info } from 'lucide-react';
 
@@ -85,6 +86,14 @@ export default function App() {
 
         {activeTab === 'flashcards' && (
           <FlashcardsView
+            store={store}
+            setActiveTab={setActiveTab}
+            setSelectedQuizTopic={setSelectedQuizTopic}
+          />
+        )}
+
+        {activeTab === 'resources' && (
+          <ResourceVaultView
             store={store}
             setActiveTab={setActiveTab}
             setSelectedQuizTopic={setSelectedQuizTopic}

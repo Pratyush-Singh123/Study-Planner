@@ -11,7 +11,8 @@ import {
   Sliders,
   ShieldAlert,
   Brain,
-  Download
+  Download,
+  FileText
 } from 'lucide-react';
 
 export default function StudyPlannerView({ store, setActiveTab, setSelectedQuizTopic }) {
@@ -96,6 +97,79 @@ export default function StudyPlannerView({ store, setActiveTab, setSelectedQuizT
       ...prev,
       [id]: !prev[id]
     }));
+  };
+
+  const exportToICS = () => {
+    if (!generatedPlan || generatedPlan.length === 0) return;
+
+    const icsLines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//GapFill//Axion Hackathon Adaptive Study Planner//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH"
+    ];
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const formatICSDate = (date) => {
+      return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}00Z`;
+    };
+
+    generatedPlan.forEach((day) => {
+      const dayDate = new Date(Date.now() + (day.dayNumber - 1) * 86400000);
+      dayDate.setHours(9, 0, 0, 0);
+
+      day.sessions.forEach((s, sIdx) => {
+        const startTime = new Date(dayDate.getTime() + sIdx * (sessionLength + 15) * 60000);
+        const endTime = new Date(startTime.getTime() + sessionLength * 60000);
+
+        icsLines.push(
+          "BEGIN:VEVENT",
+          `UID:gapfill-${currentSubject?.id || 'sub'}-d${day.dayNumber}-s${sIdx}-${Date.now()}@gapfill.app`,
+          `DTSTAMP:${formatICSDate(now)}`,
+          `DTSTART:${formatICSDate(startTime)}`,
+          `DTEND:${formatICSDate(endTime)}`,
+          `SUMMARY:Study: ${s.topicName} [${s.priority}]`,
+          `DESCRIPTION:${s.type} - ${s.focus}\\nPriority: ${s.priority}\\nDuration: ${sessionLength} min`,
+          "STATUS:CONFIRMED",
+          "END:VEVENT"
+        );
+      });
+    });
+
+    icsLines.push("END:VCALENDAR");
+
+    const blob = new Blob([icsLines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `GapFill_${(currentSubject?.name || 'Study').replace(/\s+/g, '_')}_Sprint.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportMarkdownSummary = () => {
+    if (!generatedPlan || generatedPlan.length === 0) return;
+    let md = `# 🎯 GapFill Study Sprint Roadmap — ${currentSubject?.name || 'Exam Prep'}\n\n`;
+    md += `**Target Exam:** ${currentSubject?.examDate || 'Upcoming'} (${daysLeft} days remaining)\n`;
+    md += `**Daily Study Commitment:** ${hoursPerDay} hours/day (${sessionLength} min focused blocks)\n\n---\n\n`;
+
+    generatedPlan.forEach(day => {
+      md += `### Day ${day.dayNumber}: ${day.dateStr} ${day.isLastDay ? '🎯 [FINAL REVISION]' : ''}\n\n`;
+      day.sessions.forEach(s => {
+        md += `- **${s.time}** [${s.priority}]: **${s.topicName}** (${s.type})\n  *Focus:* ${s.focus}\n`;
+      });
+      md += `\n`;
+    });
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `GapFill_Sprint_${(currentSubject?.name || 'Plan').replace(/\s+/g, '_')}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const totalSessions = generatedPlan ? generatedPlan.reduce((acc, d) => acc + d.sessions.length, 0) : 0;
@@ -208,7 +282,7 @@ export default function StudyPlannerView({ store, setActiveTab, setSelectedQuizT
         <div className="space-y-6 animate-fade-in">
           
           {/* Plan Progress Header */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h3 className="text-base font-bold text-white flex items-center space-x-2">
                 <span>Countdown Schedule Execution</span>
@@ -221,17 +295,37 @@ export default function StudyPlannerView({ store, setActiveTab, setSelectedQuizT
               </p>
             </div>
 
-            {/* Velocity Bar */}
-            <div className="w-full sm:w-48 space-y-1.5">
-              <div className="flex justify-between text-xs font-medium">
-                <span className="text-slate-400">Plan Progress</span>
-                <span className="text-indigo-400 font-bold">{progressPercent}%</span>
-              </div>
-              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                <div 
-                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300" 
-                  style={{ width: `${progressPercent}%` }}
-                />
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={exportToICS}
+                title="Download .ics file to import directly into Google Calendar, Apple Calendar, or Outlook"
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/30 transition-all"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Calendar (.ics)</span>
+              </button>
+
+              <button
+                onClick={exportMarkdownSummary}
+                title="Download printable Markdown study sprint roadmap"
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition-all"
+              >
+                <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Save Roadmap (.md)</span>
+              </button>
+
+              {/* Velocity Bar */}
+              <div className="w-full sm:w-36 space-y-1">
+                <div className="flex justify-between text-[11px] font-medium">
+                  <span className="text-slate-400">Progress</span>
+                  <span className="text-indigo-400 font-bold">{progressPercent}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                  <div 
+                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300" 
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
               </div>
             </div>
           </div>

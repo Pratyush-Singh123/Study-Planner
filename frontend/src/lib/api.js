@@ -230,6 +230,8 @@ Return ONLY valid JSON:
   return JSON.parse(clean);
 }
 
+export const recommendResource = recommendResourceAPI;
+
 export async function uploadPYQPDFAPI(file) {
   const formData = new FormData();
   formData.append('file', file);

@@ -12,7 +12,8 @@ import {
   Clock,
   Layers,
   Brain,
-  Users
+  Users,
+  Compass
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -132,6 +133,18 @@ export default function Navbar({
           </button>
 
           <button
+            onClick={() => setActiveTab('resources')}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
+              activeTab === 'resources'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Compass className="w-4 h-4" />
+            <span>Resources</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('planner')}
             className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all ${
               activeTab === 'planner'
@@ -217,6 +230,7 @@ export default function Navbar({
           { id: 'pyq', label: 'PYQs', icon: FileText },
           { id: 'community', label: 'Community', icon: Users },
           { id: 'flashcards', label: 'Flashcards', icon: Brain },
+          { id: 'resources', label: 'Resources', icon: Compass },
           { id: 'planner', label: 'Schedule', icon: Clock },
           { id: 'quiz', label: 'Quiz', icon: CheckCircle2 },
           { id: 'mistakes', label: 'Mistakes', icon: AlertTriangle },
